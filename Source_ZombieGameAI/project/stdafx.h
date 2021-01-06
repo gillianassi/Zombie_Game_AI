@@ -15,6 +15,9 @@
 #include <functional>
 #include <memory>
 
+//=== Management ===
+#define SAFE_DELETE(p) if (p) { delete (p); (p) = nullptr; }
+
 //mmgr specific includes
 #include <stdlib.h>
 #include <assert.h>
@@ -38,6 +41,9 @@ using namespace std;
 #include "EliteMath/EMath.h"
 #include "EliteInput/EInputCodes.h"
 #include "EliteInput/EInputData.h"
+#include "EliteData/EBlackboard.h"
+#include "EliteDecisionMaking/EDecisionMaking.h"
+#include "EliteDecisionMaking/EliteBehaviorTree/EBehaviorTree.h"
 #pragma endregion
 
 #define SAFE_DELETE(p) if (p) { delete (p); (p) = nullptr; }
