@@ -1,4 +1,7 @@
+// precompiled Header
 #include "stdafx.h"
+
+// includes
 #include "Plugin.h"
 #include "IExamInterface.h"
 
@@ -15,6 +18,9 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_FirstName = "Gillian";
 	info.Student_LastName = "Assi";
 	info.Student_Class = "2DAE01";
+
+	// Steering behaviour
+	m_pWander = new Wander();
 }
 
 //Called only once
@@ -139,14 +145,15 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	}
 
 	//Simple Seek Behaviour (towards Target)
-	steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-	steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
-	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
+	//steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+	//steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
+	//steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
 
 	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
 	{
 		steering.LinearVelocity = Elite::ZeroVector2;
 	}
+	steering.LinearVelocity = m_pWander->CalculateSteering(dt, agentInfo).LinearVelocity;
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
 	steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
@@ -159,6 +166,8 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_GrabItem = false; //Reset State
 	m_UseItem = false;
 	m_RemoveItem = false;
+
+	
 
 	return steering;
 }

@@ -10,7 +10,10 @@ class Plugin :public IExamPlugin
 {
 public:
 	Plugin() {};
-	virtual ~Plugin() {};
+	virtual ~Plugin() 
+	{
+		SAFE_DELETE(m_pWander);
+	};
 
 	void Initialize(IBaseInterface* pInterface, PluginInfo& info) override;
 	void DllInit() override;
@@ -34,6 +37,8 @@ private:
 	bool m_UseItem = false; //Demo purpose
 	bool m_RemoveItem = false; //Demo purpose
 	float m_AngSpeed = 0.f; //Demo purpose
+
+	Wander* m_pWander = nullptr;
 };
 
 //ENTRY
