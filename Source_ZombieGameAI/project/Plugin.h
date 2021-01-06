@@ -1,6 +1,7 @@
 #pragma once
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
+#include "SteeringBehaviors.h"
 
 class IBaseInterface;
 class IExamInterface;

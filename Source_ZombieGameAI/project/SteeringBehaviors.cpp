@@ -3,57 +3,41 @@
 
 //Includes
 #include "SteeringBehaviors.h"
-//#include "SteeringAgent.h"
+#include "IExamInterface.h"
 
 //SEEK
 //****
-SteeringOutput Seek::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Seek::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
-	/*
-	steering.LinearVelocity = (m_Target).Position - pAgent->GetPosition(); //Desired Velocity
+	
+	steering.LinearVelocity = (m_Target).Position - pAgent.Position; //Desired Velocity
 	steering.LinearVelocity.Normalize(); // get unit vector
-	steering.LinearVelocity *= pAgent->GetMaxLinearSpeed(); // Rescale to Max speed
-
-	//DEBUG RENDERING
-	if (pAgent->CanRenderBehavior())
-	{
-		DEBUGRENDERER2D->DrawDirection(pAgent->GetPosition(), steering.LinearVelocity, 5, { 0,1,0 }, 0.4f);
-		DEBUGRENDERER2D->DrawPoint((m_Target).Position, 5.0f, { 0,1,0 }, 0.4f);
-	}*/
-		
+	steering.LinearVelocity *= pAgent.MaxLinearSpeed; // Rescale to Max speed
 	
 	return steering;
 }
 
 //WANDER (base> SEEK)
 //******
-SteeringOutput Wander::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Wander::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
 	
-	/*float random = ((float)rand()) / (float)RAND_MAX;
+	float random = ((float)rand()) / (float)RAND_MAX;
 	m_WanderAngle = (m_WanderAngle - m_AngleChange/2) + (random * m_AngleChange);
-	Elite::Vector2 origin = pAgent->GetPosition() + pAgent->GetDirection() * m_Offset;
+	Elite::Vector2 origin = pAgent.Position + pAgent.LinearVelocity.GetNormalized() * m_Offset;
 	Elite::Vector2 wanderPoint = Elite::Vector2(origin.x + m_Radius * cos(m_WanderAngle), origin.y + m_Radius * sin(m_WanderAngle));
-	steering.LinearVelocity = wanderPoint - pAgent->GetPosition(); //Desired Velocity
+	steering.LinearVelocity = wanderPoint - pAgent.Position; //Desired Velocity
 	steering.LinearVelocity.Normalize(); // get unit vector
-	steering.LinearVelocity *= pAgent->GetMaxLinearSpeed(); // Rescale to Max speed
-
-	//DEBUG RENDERING
-	if (pAgent->CanRenderBehavior())
-	{
-		DEBUGRENDERER2D->DrawDirection(pAgent->GetPosition(), steering.LinearVelocity, 5, { 0,1,0 }, 0.4f);
-		DEBUGRENDERER2D->DrawCircle(origin, m_Radius, { 0,0,1 }, 0.4f);
-		DEBUGRENDERER2D->DrawPoint(wanderPoint, 5.0f, { 0,1,1 },0.4f);
-	}
-	*/
+	steering.LinearVelocity *= pAgent.MaxLinearSpeed; // Rescale to Max speed
+	
 	return steering;
 }
 
 //FLEE
 //****
-SteeringOutput Flee::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Flee::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
 	/*
@@ -73,7 +57,7 @@ SteeringOutput Flee::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //ARRIVE
 //****
-SteeringOutput Arrive::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Arrive::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	
 	SteeringOutput steering{};
@@ -97,7 +81,7 @@ SteeringOutput Arrive::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //FACE
 //****
-SteeringOutput Face::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Face::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
 	/*
@@ -118,7 +102,7 @@ SteeringOutput Face::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //PURSUIT
 //****
-SteeringOutput Pursuit::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Pursuit::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
 	/*
@@ -138,7 +122,7 @@ SteeringOutput Pursuit::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //EVADE
 //****
-SteeringOutput Evade::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringOutput Evade::CalculateSteering(float deltaT, AgentInfo pAgent)
 {
 	SteeringOutput steering{};
 	/*

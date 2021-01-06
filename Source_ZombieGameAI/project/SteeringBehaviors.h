@@ -11,7 +11,7 @@
 // Includes & Forward Declarations
 //-----------------------------------------------------------------
 #include "SteeringHelpers.h"
-class SteeringAgent;
+class AgentInfo;
 using namespace Elite;
 
 #pragma region **ISTEERINGBEHAVIOR** (BASE)
@@ -21,7 +21,7 @@ public:
 	ISteeringBehavior() = default;
 	virtual ~ISteeringBehavior() = default;
 
-	virtual SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) = 0;
+	virtual SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) = 0;
 
 	//Seek Functions
 	void SetTarget(const TargetData& target) { m_Target = target; }
@@ -46,7 +46,7 @@ public:
 	virtual ~Seek() = default;
 
 	//Seek Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 	//Seek Functions
 	virtual void SetTarget(const TargetData& target) { m_Target = target; }
@@ -65,7 +65,7 @@ public:
 	virtual ~Wander() = default;
 
 	//Wander Behavior
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 	//Wander Functions
 	void SetWanderOffset(float offset) { m_Offset = offset; }
@@ -88,7 +88,7 @@ public:
 	virtual ~Flee() = default;
 
 	//Flee Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 
 protected:
@@ -105,7 +105,7 @@ public:
 	virtual ~Arrive() = default;
 
 	//Arrive Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 	void SetSlowRadius(float slowRadius) { m_SlowRadius = slowRadius; }
 	void SetTargetRadius(float targetRadius) { m_TargetRadius = targetRadius; }
 
@@ -128,7 +128,7 @@ public:
 	virtual ~Face() = default;
 
 	//Face Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 
 protected:
@@ -148,7 +148,7 @@ public:
 	virtual ~Pursuit() = default;
 
 	//Pursuit Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 protected:
 	const TargetData* m_pTargetRef = nullptr;
@@ -166,7 +166,7 @@ public:
 	virtual ~Evade() = default;
 
 	//Evade Behaviour
-	SteeringOutput CalculateSteering(float deltaT, SteeringAgent* pAgent) override;
+	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 	void SetEvasionRadius(float evasionRadius) { m_EvasionRadius = evasionRadius; }
 
