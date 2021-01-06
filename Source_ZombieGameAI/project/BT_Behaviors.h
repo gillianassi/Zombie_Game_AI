@@ -17,18 +17,17 @@
 //-----------------------------------------------------------------
 // Behaviors
 //-----------------------------------------------------------------
-bool IsCloseToFood(Elite::Blackboard* pBlackboard)
+bool EnemyInSight(Elite::Blackboard* pBlackboard)
 {
-	/*AgarioAgent* pAgent = nullptr;
-	std::vector<AgarioFood*>* foodVec = nullptr;
+	AgentInfo* pAgent = nullptr;
 
-	auto dataAvailable = pBlackboard->GetData("Agent", pAgent) &&
-		pBlackboard->GetData("FoodVec", foodVec);
+	auto dataAvailable = pBlackboard->GetData("Agent", pAgent);
 
-	if (!pAgent || !foodVec)
+	if (!pAgent)
 		return false;
 
-	//TODO: Check for food closeby and set target accordingly
+	//TODO: Check if enemy is in sight
+	/*
 	const float closeToRange{ pAgent->GetRange() + 10 };
 	auto foodIT = std::find_if(foodVec->begin(), foodVec->end(), [&pAgent, &closeToRange](AgarioFood* f)
 		{

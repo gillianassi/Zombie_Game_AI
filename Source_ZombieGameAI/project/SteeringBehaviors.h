@@ -10,8 +10,8 @@
 //-----------------------------------------------------------------
 // Includes & Forward Declarations
 //-----------------------------------------------------------------
-#include "SteeringHelpers.h"
-class AgentInfo;
+#include "Exam_HelperStructs.h"
+struct AgentInfo;
 using namespace Elite;
 
 #pragma region **ISTEERINGBEHAVIOR** (BASE)
@@ -21,10 +21,10 @@ public:
 	ISteeringBehavior() = default;
 	virtual ~ISteeringBehavior() = default;
 
-	virtual SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) = 0;
+	virtual SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) = 0;
 
 	//Seek Functions
-	void SetTarget(const TargetData& target) { m_Target = target; }
+	void SetTarget(const EntityInfo& target) { m_Target = target; }
 
 
 	template<class T, typename std::enable_if<std::is_base_of<ISteeringBehavior, T>::value>::type* = nullptr>
@@ -32,7 +32,7 @@ public:
 	{ return static_cast<T*>(this); }
 
 protected:
-	TargetData m_Target;
+	EntityInfo m_Target;
 };
 #pragma endregion
 
@@ -46,13 +46,7 @@ public:
 	virtual ~Seek() = default;
 
 	//Seek Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
-
-	//Seek Functions
-	virtual void SetTarget(const TargetData& target) { m_Target = target; }
-
-protected:
-	const TargetData* m_pTargetRef = nullptr;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 };
 
 //////////////////////////
@@ -65,7 +59,7 @@ public:
 	virtual ~Wander() = default;
 
 	//Wander Behavior
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 	//Wander Functions
 	void SetWanderOffset(float offset) { m_Offset = offset; }
@@ -88,11 +82,7 @@ public:
 	virtual ~Flee() = default;
 
 	//Flee Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
-
-
-protected:
-	const TargetData* m_pTargetRef = nullptr;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 };
 
 ///////////////////////////////////////
@@ -105,12 +95,11 @@ public:
 	virtual ~Arrive() = default;
 
 	//Arrive Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 	void SetSlowRadius(float slowRadius) { m_SlowRadius = slowRadius; }
 	void SetTargetRadius(float targetRadius) { m_TargetRadius = targetRadius; }
 
 protected:
-	const TargetData* m_pTargetRef = nullptr;
 	float m_MaxDistance = 10.0f; 
 	float m_Distance = 0.f; //Internal
 	float m_SlowRadius = 3.0f; // When it starts slowing down
@@ -128,11 +117,10 @@ public:
 	virtual ~Face() = default;
 
 	//Face Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 
 protected:
-	const TargetData* m_pTargetRef = nullptr;
 	float m_desired = 0.f; // Internal
 	float m_current = 0.f; //Internal
 
@@ -148,10 +136,9 @@ public:
 	virtual ~Pursuit() = default;
 
 	//Pursuit Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 protected:
-	const TargetData* m_pTargetRef = nullptr;
 	Elite::Vector2 m_Predict;
 	float m_PredictionScale = 1.5f;
 };
@@ -166,12 +153,11 @@ public:
 	virtual ~Evade() = default;
 
 	//Evade Behaviour
-	SteeringOutput CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
 
 	void SetEvasionRadius(float evasionRadius) { m_EvasionRadius = evasionRadius; }
 
 protected:
-	const TargetData* m_pTargetRef = nullptr;
 	Elite::Vector2 m_Predict;
 	float m_PredictionScale = 1.f;
 	float m_VelocityLength{};

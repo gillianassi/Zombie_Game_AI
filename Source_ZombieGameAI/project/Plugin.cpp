@@ -90,7 +90,7 @@ void Plugin::Update(float dt)
 }
 
 //Update
-//This function calculates the new SteeringOutput, called once per frame
+//This function calculates the new SteeringPlugin_Output, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
 	auto steering = SteeringPlugin_Output();
@@ -144,16 +144,12 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		m_pInterface->Inventory_RemoveItem(0);
 	}
 
-	//Simple Seek Behaviour (towards Target)
-	//steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-	//steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
-	//steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
-
 	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
 	{
 		steering.LinearVelocity = Elite::ZeroVector2;
 	}
-	steering.LinearVelocity = m_pWander->CalculateSteering(dt, agentInfo).LinearVelocity;
+	// wander behaviour
+	steering = m_pWander->CalculateSteering(dt, agentInfo);
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
 	steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity

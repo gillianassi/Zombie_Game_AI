@@ -10,6 +10,5 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="BT_Behaviors.h" />
     <ClInclude Include="SteeringBehaviors.h" />
-    <ClInclude Include="SteeringHelpers.h" />
   </ItemGroup>
 </Project>
