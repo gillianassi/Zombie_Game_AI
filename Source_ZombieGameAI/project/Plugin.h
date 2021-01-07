@@ -38,6 +38,7 @@ private:
 	bool m_RemoveItem = false; //Demo purpose
 	float m_AngSpeed = 0.f; //Demo purpose
 
+	ISteeringBehavior* m_pSteeringBehavior = nullptr;
 	Wander* m_pWander = nullptr;
 };
 

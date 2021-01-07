@@ -102,7 +102,10 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-
+	if (vEntitiesInFOV.size() == 0)
+		m_pSteeringBehavior = m_pWander;
+	else
+		m_pSteeringBehavior = nullptr;
 	for (auto& e : vEntitiesInFOV)
 	{
 		if (e.Type == eEntityType::PURGEZONE)
@@ -144,12 +147,41 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		m_pInterface->Inventory_RemoveItem(0);
 	}
 
-	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
-	{
-		steering.LinearVelocity = Elite::ZeroVector2;
-	}
+	
 	// wander behaviour
-	steering = m_pWander->CalculateSteering(dt, agentInfo);
+	if (m_pSteeringBehavior)
+	{
+		SteeringPlugin_Output output = m_pSteeringBehavior->CalculateSteering(dt, agentInfo);
+		steering.LinearVelocity = output.LinearVelocity;
+		//Linear Movement
+		//***************
+		/*Elite::Vector2 linVel = agentInfo.LinearVelocity;
+		Elite::Vector2 steeringForce = output.LinearVelocity - linVel;
+		auto acceleration = steeringForce / agentInfo.;
+
+		SetLinearVelocity(linVel + (acceleration * dt));
+
+		//Angular Movement
+		//****************
+		if (m_AutoOrient)
+		{
+			auto desiredOrientation = Elite::GetOrientationFromVelocity(GetLinearVelocity());
+			SetRotation(desiredOrientation);
+		}
+		else
+		{
+			if (output.AngularVelocity > m_MaxAngularSpeed)
+				output.AngularVelocity = m_MaxAngularSpeed;
+			SetAngularVelocity(output.AngularVelocity);
+		}*/
+
+	}
+	//steering = m_pWander->CalculateSteering(dt, agentInfo);
+	//if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
+	//{
+	//	steering.LinearVelocity = Elite::ZeroVector2;
+	//}
+
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
 	steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
