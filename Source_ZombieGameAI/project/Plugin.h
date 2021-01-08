@@ -27,7 +27,7 @@ private:
 	IExamInterface* m_pInterface = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
-	Elite::Blackboard* CreateBlackboard(AgentInfo agentInfo);
+	Elite::Blackboard* CreateBlackboard(AgentSteering* steering);
 
 
 	Elite::Vector2 m_Target = {};

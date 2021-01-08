@@ -61,15 +61,13 @@ bool IsCloseToBetaAgent(Elite::Blackboard* pBlackboard)
 
 BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 {
-	AgentInfo* pAgent = nullptr;
-	Plugin* oops = nullptr;
-	//auto dataAvailable = pBlackboard->GetData("Agent", pAgent) &&
-		//pBlackboard->GetData("plugin", oops);
+	AgentSteering* pSteering = nullptr;
+	auto dataAvailable = pBlackboard->GetData("AgentSteering", pSteering);
 
-	//if ((!pAgent)||(!oops))
-		//return Failure;
+	if ((!pSteering))
+		return Failure;
 
-	
+	pSteering->SetToWander();
 	/*if (debugRender)
 	{
 		std::cout << "Wandering..." << std::endl;

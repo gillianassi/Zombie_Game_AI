@@ -28,10 +28,10 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 	// Steering behaviour
 	m_pAgentsteering = new AgentSteering();
-	Blackboard* pB = CreateBlackboard(m_pInterface->Agent_GetInfo());
+	Blackboard* pB = CreateBlackboard(m_pAgentsteering);
 	BehaviorTree* pBT = new BehaviorTree(pB, 
 		new BehaviorAction(ChangeToWander));
-	//m_pAgentsteering->SetDecisionMaking(pBT);
+	m_pAgentsteering->SetDecisionMaking(pBT);
 	//m_pDecisionMaking = pBT;
 }
 
@@ -161,11 +161,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
 	steering = m_pAgentsteering->GetAgentSteering();
 
-	if (m_pSteeringBehavior)
-	{
-		SteeringPlugin_Output output = m_pSteeringBehavior->CalculateSteering(dt, agentInfo);
-		steering.LinearVelocity = output.LinearVelocity;
-	}
 	//steering = m_pWander->CalculateSteering(dt, agentInfo);
 	//if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
 	//{
@@ -235,11 +230,10 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	return vEntitiesInFOV;
 }
 
-Blackboard* Plugin::CreateBlackboard(AgentInfo agentInfo)
+Blackboard* Plugin::CreateBlackboard(AgentSteering* steering)
 {
 	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
-	pBlackboard->AddData("AgentInfo", agentInfo);
-	pBlackboard->AddData("plugin", this);
+	pBlackboard->AddData("AgentSteering", steering);
 	pBlackboard->AddData("Target", Elite::Vector2{});
 	pBlackboard->AddData("Time", 0.0f);
 	//pBlackboard->AddData("DebugRender", false);
