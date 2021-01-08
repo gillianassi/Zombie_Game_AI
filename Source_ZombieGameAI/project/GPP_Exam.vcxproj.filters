@@ -4,11 +4,17 @@
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="SteeringBehaviors.cpp" />
+    <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
+    <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="BT_Behaviors.h" />
     <ClInclude Include="SteeringBehaviors.h" />
+    <ClInclude Include="EliteData\EBlackboard.h" />
+    <ClInclude Include="EliteDecisionMaking\EDecisionMaking.h" />
+    <ClInclude Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.h" />
+    <ClInclude Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h" />
   </ItemGroup>
 </Project>

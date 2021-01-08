@@ -147,3 +147,49 @@ SteeringPlugin_Output Evade::CalculateSteering(float deltaT, AgentInfo pAgent)
 	}*/
 	return steering;
 }
+
+//CALCULATE STEERING
+//*******************
+AgentSteering::AgentSteering()
+{
+	//Create the possible steering behaviors for the agent
+	m_pWander = new Wander();
+	m_pSeek = new Seek();
+	m_pFlee = new Flee();
+}
+
+AgentSteering::~AgentSteering()
+{
+	SAFE_DELETE(m_DecisionMaking);
+	SAFE_DELETE(m_pSteeringBehavior);
+	SAFE_DELETE(m_pWander);
+	SAFE_DELETE(m_pSeek);
+	SAFE_DELETE(m_pFlee);
+}
+
+void AgentSteering::CalculateSteering(float dt, AgentInfo agentInfo)
+{
+	if (m_DecisionMaking)
+		m_DecisionMaking->Update(dt);
+
+	if (m_pSteeringBehavior)
+		m_Agentsteering = m_pSteeringBehavior->CalculateSteering(dt, agentInfo);
+}
+
+void AgentSteering::SetToWander()
+{
+	SetSteeringBehavior(m_pWander);
+}
+
+void AgentSteering::SetToSeek(EntityInfo entity)
+{
+	m_pSeek->SetTarget(entity);
+	SetSteeringBehavior(m_pSeek);
+}
+
+void AgentSteering::SetToFlee(EntityInfo entity)
+{
+	m_pFlee->SetTarget(entity);
+	SetSteeringBehavior(m_pFlee);
+}
+

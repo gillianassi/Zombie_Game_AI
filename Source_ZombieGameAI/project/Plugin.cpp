@@ -4,7 +4,14 @@
 // includes
 #include "Plugin.h"
 #include "IExamInterface.h"
+#include "BT_Behaviors.h"
 
+Plugin::~Plugin()
+{
+	SAFE_DELETE(m_pSteeringBehavior);
+	SAFE_DELETE(m_pDecisionMaking);
+	SAFE_DELETE(m_pAgentsteering);
+}
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
@@ -20,7 +27,12 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_Class = "2DAE01";
 
 	// Steering behaviour
-	m_pWander = new Wander();
+	m_pAgentsteering = new AgentSteering();
+	Blackboard* pB = CreateBlackboard(m_pInterface->Agent_GetInfo());
+	BehaviorTree* pBT = new BehaviorTree(pB, 
+		new BehaviorAction(ChangeToWander));
+	//m_pAgentsteering->SetDecisionMaking(pBT);
+	//m_pDecisionMaking = pBT;
 }
 
 //Called only once
@@ -102,10 +114,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-	if (vEntitiesInFOV.size() == 0)
-		m_pSteeringBehavior = m_pWander;
-	else
-		m_pSteeringBehavior = nullptr;
+
 	for (auto& e : vEntitiesInFOV)
 	{
 		if (e.Type == eEntityType::PURGEZONE)
@@ -149,32 +158,13 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	
 	// wander behaviour
+	m_pAgentsteering->CalculateSteering(dt, agentInfo);
+	steering = m_pAgentsteering->GetAgentSteering();
+
 	if (m_pSteeringBehavior)
 	{
 		SteeringPlugin_Output output = m_pSteeringBehavior->CalculateSteering(dt, agentInfo);
 		steering.LinearVelocity = output.LinearVelocity;
-		//Linear Movement
-		//***************
-		/*Elite::Vector2 linVel = agentInfo.LinearVelocity;
-		Elite::Vector2 steeringForce = output.LinearVelocity - linVel;
-		auto acceleration = steeringForce / agentInfo.;
-
-		SetLinearVelocity(linVel + (acceleration * dt));
-
-		//Angular Movement
-		//****************
-		if (m_AutoOrient)
-		{
-			auto desiredOrientation = Elite::GetOrientationFromVelocity(GetLinearVelocity());
-			SetRotation(desiredOrientation);
-		}
-		else
-		{
-			if (output.AngularVelocity > m_MaxAngularSpeed)
-				output.AngularVelocity = m_MaxAngularSpeed;
-			SetAngularVelocity(output.AngularVelocity);
-		}*/
-
 	}
 	//steering = m_pWander->CalculateSteering(dt, agentInfo);
 	//if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
@@ -243,4 +233,16 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	}
 
 	return vEntitiesInFOV;
+}
+
+Blackboard* Plugin::CreateBlackboard(AgentInfo agentInfo)
+{
+	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
+	pBlackboard->AddData("AgentInfo", agentInfo);
+	pBlackboard->AddData("plugin", this);
+	pBlackboard->AddData("Target", Elite::Vector2{});
+	pBlackboard->AddData("Time", 0.0f);
+	//pBlackboard->AddData("DebugRender", false);
+
+	return pBlackboard;
 }

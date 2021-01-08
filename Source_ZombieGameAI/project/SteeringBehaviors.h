@@ -165,6 +165,31 @@ protected:
 private:
 	float m_EvasionRadius = 15.f;
 };
+
+class AgentSteering
+{
+public:
+	AgentSteering();
+	virtual ~AgentSteering();
+
+	virtual void CalculateSteering(float dt, AgentInfo agentInfo);
+
+	virtual void SetSteeringBehavior(ISteeringBehavior* pBehavior) { m_pSteeringBehavior = pBehavior; }
+	ISteeringBehavior* GetSteeringBehavior() const { return m_pSteeringBehavior; }
+	void SetDecisionMaking(Elite::IDecisionMaking* decisionMakingStructure) { m_DecisionMaking = decisionMakingStructure; }
+	SteeringPlugin_Output GetAgentSteering() { return m_Agentsteering; }
+	void SetToWander();
+	void SetToSeek(EntityInfo entity);
+	void SetToFlee(EntityInfo entity);
+
+protected:
+	SteeringPlugin_Output m_Agentsteering{};
+	Elite::IDecisionMaking* m_DecisionMaking = nullptr;
+	ISteeringBehavior* m_pSteeringBehavior = nullptr;
+	ISteeringBehavior* m_pWander = nullptr;
+	ISteeringBehavior* m_pSeek = nullptr;
+	ISteeringBehavior* m_pFlee = nullptr;
+};
 #endif
 
 

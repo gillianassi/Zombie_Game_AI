@@ -10,10 +10,7 @@ class Plugin :public IExamPlugin
 {
 public:
 	Plugin() {};
-	virtual ~Plugin() 
-	{
-		SAFE_DELETE(m_pWander);
-	};
+	virtual ~Plugin();
 
 	void Initialize(IBaseInterface* pInterface, PluginInfo& info) override;
 	void DllInit() override;
@@ -30,6 +27,8 @@ private:
 	IExamInterface* m_pInterface = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
+	Elite::Blackboard* CreateBlackboard(AgentInfo agentInfo);
+
 
 	Elite::Vector2 m_Target = {};
 	bool m_CanRun = false; //Demo purpose
@@ -39,7 +38,9 @@ private:
 	float m_AngSpeed = 0.f; //Demo purpose
 
 	ISteeringBehavior* m_pSteeringBehavior = nullptr;
-	Wander* m_pWander = nullptr;
+	AgentSteering* m_pAgentsteering = nullptr;
+	Elite::IDecisionMaking* m_pDecisionMaking = nullptr;
+
 };
 
 //ENTRY

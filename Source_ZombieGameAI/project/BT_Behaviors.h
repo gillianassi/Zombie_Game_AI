@@ -10,7 +10,7 @@
 // Includes & Forward Declarations
 //-----------------------------------------------------------------
 #include "../inc/EliteMath/EMath.h"
-#include "../inc/EliteDecisionMaking/EliteBehaviorTree/EBehaviorTree.h"
+#include "EliteDecisionMaking/EliteBehaviorTree/EBehaviorTree.h"
 //#include "IExamInterface.h"
 #include "SteeringBehaviors.h"
 
@@ -21,7 +21,7 @@ bool EnemyInSight(Elite::Blackboard* pBlackboard)
 {
 	AgentInfo* pAgent = nullptr;
 
-	auto dataAvailable = pBlackboard->GetData("Agent", pAgent);
+	//auto dataAvailable = pBlackboard->GetData("AgentInfo", pAgent);
 
 	if (!pAgent)
 		return false;
@@ -61,16 +61,16 @@ bool IsCloseToBetaAgent(Elite::Blackboard* pBlackboard)
 
 BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 {
-	/*AgarioAgent* pAgent = nullptr;
-	bool debugRender = false;
-	auto dataAvailable = pBlackboard->GetData("Agent", pAgent) &&
-		pBlackboard->GetData("DebugRender", debugRender);
+	AgentInfo* pAgent = nullptr;
+	Plugin* oops = nullptr;
+	//auto dataAvailable = pBlackboard->GetData("Agent", pAgent) &&
+		//pBlackboard->GetData("plugin", oops);
 
-	if (!pAgent)
-		return Failure;
+	//if ((!pAgent)||(!oops))
+		//return Failure;
 
-	pAgent->SetToWander();
-	if (debugRender)
+	
+	/*if (debugRender)
 	{
 		std::cout << "Wandering..." << std::endl;
 		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), (pAgent->GetRange() + 10), { 0,1,0 }, 0.4f);
