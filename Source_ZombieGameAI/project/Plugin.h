@@ -36,10 +36,11 @@ private:
 	bool m_UseItem = false; //Demo purpose
 	bool m_RemoveItem = false; //Demo purpose
 	float m_AngSpeed = 0.f; //Demo purpose
+	float m_timer = 0.f;
 
-	ISteeringBehavior* m_pSteeringBehavior = nullptr;
 	AgentSteering* m_pAgentsteering = nullptr;
 	Elite::IDecisionMaking* m_pDecisionMaking = nullptr;
+	std::vector<EntityInfo> m_EntitiesInFOV{};
 
 };
 

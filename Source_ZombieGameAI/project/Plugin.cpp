@@ -8,9 +8,9 @@
 
 Plugin::~Plugin()
 {
-	SAFE_DELETE(m_pSteeringBehavior);
 	SAFE_DELETE(m_pDecisionMaking);
 	SAFE_DELETE(m_pAgentsteering);
+	SAFE_DELETE(m_pInterface);
 }
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
@@ -28,11 +28,19 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 	// Steering behaviour
 	m_pAgentsteering = new AgentSteering();
+	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
 	Blackboard* pB = CreateBlackboard(m_pAgentsteering);
 	BehaviorTree* pBT = new BehaviorTree(pB, 
-		new BehaviorAction(ChangeToWander));
+		new BehaviorSelector({
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(EnemyInSight),
+					new BehaviorAction(ChangeToAvoid)
+				}),
+			new BehaviorAction(ChangeToWander)
+			})
+	);
 	m_pAgentsteering->SetDecisionMaking(pBT);
-	//m_pDecisionMaking = pBT;
 }
 
 //Called only once
@@ -111,24 +119,21 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
-
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-
-	for (auto& e : vEntitiesInFOV)
+	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+	for (auto& e : m_EntitiesInFOV)
 	{
 		if (e.Type == eEntityType::PURGEZONE)
 		{
 			PurgeZoneInfo zoneInfo;
 			m_pInterface->PurgeZone_GetInfo(e, zoneInfo);
-			std::cout << "Purge Zone in FOV:" << e.Location.x << ", "<< e.Location.y <<  " ---EntityHash: " << e.EntityHash << "---Radius: "<< zoneInfo.Radius << std::endl;
+			std::cout << "Purge Zone in FOV:" << e.Location.x << ", " << e.Location.y << " ---EntityHash: " << e.EntityHash << "---Radius: " << zoneInfo.Radius << std::endl;
 		}
 	}
-	
 
 	//INVENTORY USAGE DEMO
 	//********************
-
+	/*
 	if (m_GrabItem)
 	{
 		ItemInfo item;
@@ -155,21 +160,24 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		//Remove an item from a inventory slot
 		m_pInterface->Inventory_RemoveItem(0);
 	}
-
+	*/
 	
-	// wander behaviour
+	// Handle steeirng
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
 	steering = m_pAgentsteering->GetAgentSteering();
 
-	//steering = m_pWander->CalculateSteering(dt, agentInfo);
-	//if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
-	//{
-	//	steering.LinearVelocity = Elite::ZeroVector2;
-	//}
+	steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
+	//steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
+	if (agentInfo.WasBitten)
+	{
+		m_CanRun = true;
+		m_timer = 3.f;
+	}
+	if (m_timer > 0)
+		m_timer -= dt;
+	else if (m_timer <= 0)
+		//m_CanRun = false;
 
-
-	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
 
 	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
@@ -179,8 +187,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_GrabItem = false; //Reset State
 	m_UseItem = false;
 	m_RemoveItem = false;
-
-	
 
 	return steering;
 }
@@ -230,12 +236,17 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	return vEntitiesInFOV;
 }
 
-Blackboard* Plugin::CreateBlackboard(AgentSteering* steering)
+Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 {
 	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
-	pBlackboard->AddData("AgentSteering", steering);
-	pBlackboard->AddData("Target", Elite::Vector2{});
-	pBlackboard->AddData("Time", 0.0f);
+	pBlackboard->AddData("pAgentSteering", pSteering);
+	pBlackboard->AddData("pInterface", m_pInterface);
+	pBlackboard->AddData("pEntitiesInFOV", &m_EntitiesInFOV);
+	//pBlackboard->AddData("pTargetEntity", static_cast<EntityInfo*>(nullptr));
+	pBlackboard->AddData("TargetPos", Elite::Vector2{});
+	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});
+	pBlackboard->AddData("RunTimer", 0.0f);
+	pBlackboard->AddData("Running", true);
 	//pBlackboard->AddData("DebugRender", false);
 
 	return pBlackboard;

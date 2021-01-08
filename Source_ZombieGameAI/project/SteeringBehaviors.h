@@ -21,10 +21,10 @@ public:
 	ISteeringBehavior() = default;
 	virtual ~ISteeringBehavior() = default;
 
-	virtual SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) = 0;
+	virtual SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) = 0;
 
 	//Seek Functions
-	void SetTarget(const EntityInfo& target) { m_Target = target; }
+	void SetTarget(Elite::Vector2 target) { m_pTarget = target; }
 
 
 	template<class T, typename std::enable_if<std::is_base_of<ISteeringBehavior, T>::value>::type* = nullptr>
@@ -32,7 +32,7 @@ public:
 	{ return static_cast<T*>(this); }
 
 protected:
-	EntityInfo m_Target;
+	Elite::Vector2 m_pTarget{};
 };
 #pragma endregion
 
@@ -46,7 +46,7 @@ public:
 	virtual ~Seek() = default;
 
 	//Seek Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 };
 
 //////////////////////////
@@ -59,7 +59,7 @@ public:
 	virtual ~Wander() = default;
 
 	//Wander Behavior
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 
 	//Wander Functions
 	void SetWanderOffset(float offset) { m_Offset = offset; }
@@ -82,7 +82,24 @@ public:
 	virtual ~Flee() = default;
 
 	//Flee Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
+};
+
+///////////////////////////////////////
+//AVOID
+//****
+class Avoid : public ISteeringBehavior
+{
+public:
+	Avoid() = default;
+	virtual ~Avoid() = default;
+
+	//Flee Behaviour
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
+	void SetEntitiesToAvoid(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
+
+private:
+	vector<EntityInfo> m_avoidVec{};
 };
 
 ///////////////////////////////////////
@@ -95,7 +112,7 @@ public:
 	virtual ~Arrive() = default;
 
 	//Arrive Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 	void SetSlowRadius(float slowRadius) { m_SlowRadius = slowRadius; }
 	void SetTargetRadius(float targetRadius) { m_TargetRadius = targetRadius; }
 
@@ -117,7 +134,7 @@ public:
 	virtual ~Face() = default;
 
 	//Face Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 
 
 protected:
@@ -136,7 +153,7 @@ public:
 	virtual ~Pursuit() = default;
 
 	//Pursuit Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 
 protected:
 	Elite::Vector2 m_Predict;
@@ -153,7 +170,7 @@ public:
 	virtual ~Evade() = default;
 
 	//Evade Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo pAgent) override;
+	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
 
 	void SetEvasionRadius(float evasionRadius) { m_EvasionRadius = evasionRadius; }
 
@@ -179,16 +196,18 @@ public:
 	void SetDecisionMaking(Elite::IDecisionMaking* decisionMakingStructure) { m_DecisionMaking = decisionMakingStructure; }
 	SteeringPlugin_Output GetAgentSteering() { return m_Agentsteering; }
 	void SetToWander();
-	void SetToSeek(EntityInfo entity);
-	void SetToFlee(EntityInfo entity);
+	void SetToSeek(Elite::Vector2 targetPos);
+	void SetToFlee(Elite::Vector2 targetPos);
+	void SetToAvoid(vector<EntityInfo> avoidVec);
 
 protected:
 	SteeringPlugin_Output m_Agentsteering{};
 	Elite::IDecisionMaking* m_DecisionMaking = nullptr;
 	ISteeringBehavior* m_pSteeringBehavior = nullptr;
-	ISteeringBehavior* m_pWander = nullptr;
-	ISteeringBehavior* m_pSeek = nullptr;
-	ISteeringBehavior* m_pFlee = nullptr;
+	Wander* m_pWander = nullptr;
+	Seek* m_pSeek = nullptr;
+	Flee* m_pFlee = nullptr;
+	Avoid* m_pAvoid = nullptr;
 };
 #endif
 

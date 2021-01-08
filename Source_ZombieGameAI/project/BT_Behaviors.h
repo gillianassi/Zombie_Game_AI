@@ -19,30 +19,45 @@
 //-----------------------------------------------------------------
 bool EnemyInSight(Elite::Blackboard* pBlackboard)
 {
-	AgentInfo* pAgent = nullptr;
-
-	//auto dataAvailable = pBlackboard->GetData("AgentInfo", pAgent);
-
-	if (!pAgent)
+	//Get data from blackboard
+	IExamInterface* pInterface = nullptr;
+	vector<EntityInfo>* pEntitiesInFOV = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
+	if ((!pInterface)||(!pEntitiesInFOV))
+		return false;
+	
+	// Check for enemies in FOV
+	if (pEntitiesInFOV->size() == 0)
 		return false;
 
-	//TODO: Check if enemy is in sight
-	/*
-	const float closeToRange{ pAgent->GetRange() + 10 };
-	auto foodIT = std::find_if(foodVec->begin(), foodVec->end(), [&pAgent, &closeToRange](AgarioFood* f)
-		{
-			return DistanceSquared(pAgent->GetPosition(), f->GetPosition()) < (closeToRange * closeToRange);
-		});
-	if (foodIT != foodVec->end())
+	std::vector<EntityInfo> avoidVec = {};
+	for (auto& entity : *pEntitiesInFOV)
 	{
-		pBlackboard->ChangeData("Target", (*foodIT)->GetPosition());
-		return true;
-	}*/
-	return false;
+		if (entity.Type == eEntityType::ENEMY)
+		{
+			avoidVec.push_back(entity);
+		}
+	}
+	if (avoidVec.size() == 0)
+		return false;
+
+	pBlackboard->ChangeData("AvoidVec", avoidVec);
+	return true;
 }
 
-bool IsCloseToAgent(Elite::Blackboard* pBlackboard)
+bool IsBitten(Elite::Blackboard* pBlackboard)
 {
+	//Get data from blackboard
+	IExamInterface* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+	if (!pInterface)
+		return false;
+
+	AgentInfo agentInfo = pInterface->Agent_GetInfo();
+	if(agentInfo.Bitten)
+		return true;
+
 	return false;
 }
 
@@ -62,31 +77,71 @@ bool IsCloseToBetaAgent(Elite::Blackboard* pBlackboard)
 BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
-	auto dataAvailable = pBlackboard->GetData("AgentSteering", pSteering);
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering);
 
 	if ((!pSteering))
 		return Failure;
 
-	pSteering->SetToWander();
-	/*if (debugRender)
-	{
-		std::cout << "Wandering..." << std::endl;
-		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), (pAgent->GetRange() + 10), { 0,1,0 }, 0.4f);
-		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), (pAgent->GetRange() + 7), { 0,0,1 }, 0.4f);
-		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), (pAgent->GetRange()), { 1,0,0 }, 0.4f);
-	}*/
+	//pSteering->SetToWander();
+	cout << "ChangToWander" << endl;
+	return Success;
+}
+
+BehaviorState ChangeToPanic(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering);
+
+	if ((!pSteering))
+		return Failure;
+
+	//pSteering->SetToWander();
+	cout << "ChangToWander" << endl;
 	return Success;
 }
 
 BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 {
-	
+	AgentSteering* pSteering = nullptr;
+	Elite::Vector2 pTargetPos{};
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("TargetPos", pTargetPos);
+
+	if (!pSteering)
+		return Failure;
+
+	pSteering->SetToSeek(pTargetPos);
+
 	return Success;
 }
 
 BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 {
-	
+	AgentSteering* pSteering = nullptr;
+	Elite::Vector2 pTargetPos{};
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("TargetPos", pTargetPos);
+
+	if (!pSteering)
+		return Failure;
+
+	pSteering->SetToFlee(pTargetPos);
+	cout << "ChangToFlee" << endl;
+	return Success;
+}
+
+BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	std::vector<EntityInfo> avoidVec{};
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("AvoidVec", avoidVec);
+
+	if (!pSteering)
+		return Failure;
+
+	//pSteering->SetToAvoid(avoidVec);
+	cout << "ChangToAvoid" << endl;
 	return Success;
 }
 
