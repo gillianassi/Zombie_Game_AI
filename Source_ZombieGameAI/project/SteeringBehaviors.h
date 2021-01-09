@@ -65,7 +65,7 @@ public:
 	void SetWanderOffset(float offset) { m_Offset = offset; }
 
 protected:
-	float m_Offset = 6.f; //Offset (Agent Direction)
+	float m_Offset = 10.f; //Offset (Agent Direction)
 	float m_Radius = 4.f; //WanderRadius
 	float m_AngleChange = ToRadians(45); //Max Wander Angle change per frame
 	float m_WanderAngle = 0.f; //Internal

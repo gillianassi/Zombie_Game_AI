@@ -36,7 +36,8 @@ private:
 	bool m_UseItem = false; //Demo purpose
 	bool m_RemoveItem = false; //Demo purpose
 	float m_AngSpeed = 0.f; //Demo purpose
-	float m_timer = 0.f;
+	float m_Runtimer = 0.f;
+	float m_Housetimer = 0.f;
 
 	AgentSteering* m_pAgentsteering = nullptr;
 	Elite::IDecisionMaking* m_pDecisionMaking = nullptr;

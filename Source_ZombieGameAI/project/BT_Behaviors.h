@@ -51,26 +51,116 @@ bool EnemyInSight(Elite::Blackboard* pBlackboard)
 	return true;
 }
 
+/// Check if enemies are in sight 
+/// 
+/// If enemies are in the line of sight, register their data inside an EntityInfo vector.
+/// This data is inserted into the blackboard.
+bool ItemInSight(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExtraInterfaceInfo* pInterface = nullptr;
+	vector<EntityInfo>* pEntitiesInFOV = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
+	if ((!pInterface)||(!pEntitiesInFOV))
+		return false;
+	
+	// Check for enemies in FOV
+	if (pEntitiesInFOV->size() == 0)
+		return false;
+
+	ItemInfo item = {};
+	for (auto& entity : *pEntitiesInFOV)
+	{
+		if (entity.Type == eEntityType::ITEM)
+		{
+
+			pInterface->Item_GetInfo(entity, item);
+		}
+	}
+
+	//pBlackboard->ChangeData("AvoidVec", avoidVec);
+	return true;
+}
+
+
 /// Check if a house is in sight 
 /// 
-/// If a house is in the line of sight insert this data into the blackboard.
+/// If a house is in the line of sight insert the closest path point into the blackboard
+/// As long as the agent is not in the house, store it's location to have an exit point
 bool HouseInSight(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
 	ExtraInterfaceInfo* pInterface = nullptr;
 	vector<HouseInfo>* pHousesInFOV = nullptr;
+	Elite::Vector2 exit{};
+	float* houseTimer= nullptr;
+
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
-		pBlackboard->GetData("pHousesInFOV", pHousesInFOV);
-	if ((!pInterface)||(!pHousesInFOV))
+		pBlackboard->GetData("pHousesInFOV", pHousesInFOV) &&
+		pBlackboard->GetData("ExitPos",exit) &&
+		pBlackboard->GetData("HouseTimer", houseTimer);
+
+	// check if there is interface and fov data
+	// + don't commence if the house timer is initiated or no houses are in sight.
+	if ((!pInterface)||(!pHousesInFOV)||(*houseTimer > 0.f )|| (pHousesInFOV->size() == 0))
 		return false;
 	
-	// Check for enemies in FOV
-	if (pHousesInFOV->size() == 0)
-		return false;
 
 	HouseInfo house = pHousesInFOV->front();
+	AgentInfo agent = pInterface->Agent_GetInfo();
+	if (!agent.IsInHouse)
+	{
+		pBlackboard->ChangeData("ExitPos", agent.Position);
+		pBlackboard->ChangeData("HouseCenterReached", false);
+		cout << "Seek exit" << endl;
+	}
 
-	pBlackboard->ChangeData("House", house);
+	pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
+	pBlackboard->ChangeData("HouseInfo", house);
+	cout << "Seek House center" << endl;
+
+	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(house.Center), 3.f, { 0,0,1 });
+	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(exit), 3.f, { 0,1,0 });
+	return true;
+}
+
+/// Check if a house is in sight 
+/// 
+/// If a house is in the line of sight insert the closest path point into the blackboard
+/// As long as the agent is not in the house, store it's location to have an exit point
+bool AgentInHouse(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExtraInterfaceInfo* pInterface = nullptr;
+	bool reached = false;
+	Elite::Vector2 exit{};
+	HouseInfo house{};
+
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("HouseCenterReached", reached) &&
+		pBlackboard->GetData("ExitPos", exit) &&
+		pBlackboard->GetData("HouseInfo", house)
+		;
+
+	if (!pInterface)
+		return false;
+	AgentInfo agent = pInterface->Agent_GetInfo();
+	if (!agent.IsInHouse)
+		return false;
+	if (reached)
+	{
+		pBlackboard->ChangeData("TargetPos", exit);
+		cout << "center reached: going to exit" << endl;
+	}
+	else
+	{
+		if (agent.Position.DistanceSquared(pInterface->NavMesh_GetClosestPathPoint(house.Center)) < 0.5)
+			pBlackboard->ChangeData("HouseCenterReached", true);
+		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
+	}
+	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(house.Center), 3.f, { 0,0,1 });
+	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(exit), 3.f, { 0,1,0 });
 	return true;
 }
 
@@ -128,7 +218,7 @@ BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	if ((!pSteering))
 		return Failure;
 
-	//pSteering->SetToWander();
+	pSteering->SetToWander();
 	cout << "ChangToWander" << endl;
 	return Success;
 }
@@ -141,12 +231,28 @@ BehaviorState ChangeToPanic(Elite::Blackboard* pBlackboard)
 	if ((!pSteering))
 		return Failure;
 
-	//pSteering->SetToWander();
+	pSteering->SetToWander();
 	cout << "ChangToWander" << endl;
 	return Success;
 }
 
 BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	Elite::Vector2 pTargetPos{};
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("TargetPos", pTargetPos);
+
+	if (!pSteering)
+		return Failure;
+
+	cout << "ChangToSeek" << endl;
+	pSteering->SetToSeek(pTargetPos);
+
+	return Success;
+}
+
+BehaviorState ChangeToEnter(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
 	Elite::Vector2 pTargetPos{};
@@ -186,24 +292,8 @@ BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
 	if (!pSteering)
 		return Failure;
 
-	//pSteering->SetToAvoid(avoidVec);
+	pSteering->SetToAvoid(avoidVec);
 	cout << "ChangToAvoid" << endl;
 	return Success;
 }
-
-BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
-{
-	AgentSteering* pSteering = nullptr;
-	std::vector<EntityInfo> avoidVec{};
-	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
-		pBlackboard->GetData("AvoidVec", avoidVec);
-
-	if (!pSteering)
-		return Failure;
-
-	//pSteering->SetToAvoid(avoidVec);
-	cout << "ChangToAvoid" << endl;
-	return Success;
-}
-
 #endif

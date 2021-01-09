@@ -34,6 +34,16 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		new BehaviorSelector({
 			new BehaviorSequence(
 				{
+					new BehaviorConditional(AgentInHouse),
+					new BehaviorAction(ChangeToSeek)
+				}),
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(HouseInSight),
+					new BehaviorAction(ChangeToSeek)
+				}),
+			new BehaviorSequence(
+				{
 					new BehaviorConditional(EnemyInSight),
 					new BehaviorAction(ChangeToAvoid)
 				}),
@@ -169,14 +179,17 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	if (agentInfo.WasBitten)
 	{
 		m_CanRun = true;
-		m_timer = 3.f;
+		m_Runtimer = 2.f;
 	}
-	if (m_timer > 0)
-		m_timer -= dt;
-	else if (m_timer <= 0)
-		//m_CanRun = false;
-
-
+	else if (m_Runtimer > 0)
+		m_Runtimer -= dt;
+	else
+		m_CanRun = false;
+	// timer before agent enters a new house
+	if (agentInfo.IsInHouse)
+		m_Housetimer = 4.f;
+	else if (m_Housetimer > 0)
+		m_Housetimer -= dt;
 	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
 								 //SteeringPlugin_Output is works the exact same way a SteeringBehaviour output
@@ -243,9 +256,13 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("pHousesInFOV", &m_HousesInFOV);
 	//pBlackboard->AddData("pTargetEntity", static_cast<EntityInfo*>(nullptr));
 	pBlackboard->AddData("TargetPos", Elite::Vector2{});
+	pBlackboard->AddData("ExitPos", Elite::Vector2{});
 	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});
+	pBlackboard->AddData("HouseInfo", HouseInfo{});
 	pBlackboard->AddData("RunTimer", 0.0f);
-	pBlackboard->AddData("Running", true);
+	pBlackboard->AddData("HouseTimer", &m_Housetimer);
+	pBlackboard->AddData("Running", false);
+	pBlackboard->AddData("HouseCenterReached", false);
 	//pBlackboard->AddData("DebugRender", false);
 
 	return pBlackboard;
