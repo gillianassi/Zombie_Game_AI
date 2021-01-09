@@ -6,7 +6,8 @@
     <ClCompile Include="SteeringBehaviors.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
-    <ClCompile Include="ExtraInterfaceInfo.cpp" />
+    <ClCompile Include="ConsoleOutputReducer.cpp" />
+    <ClCompile Include="ExamInterfaceWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -17,6 +18,7 @@
     <ClInclude Include="EliteDecisionMaking\EDecisionMaking.h" />
     <ClInclude Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.h" />
     <ClInclude Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h" />
-    <ClInclude Include="ExtraInterfaceInfo.h" />
+    <ClInclude Include="ConsoleOutputReducer.h" />
+    <ClInclude Include="ExamInterfaceWrapper.h" />
   </ItemGroup>
 </Project>

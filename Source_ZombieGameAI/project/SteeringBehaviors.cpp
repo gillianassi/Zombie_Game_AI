@@ -74,39 +74,26 @@ SteeringPlugin_Output Avoid::CalculateSteering(float deltaT, AgentInfo agentInfo
 	return steering;
 }
 
-//ARRIVE
-//****
-SteeringPlugin_Output Arrive::CalculateSteering(float deltaT, AgentInfo agentInfo)
-{
-	
-	SteeringPlugin_Output steering{};
-	/*
-	m_Distance = (m_Target).Position.Distance(agentInfo->GetPosition()) - m_TargetRadius;
-	Elite::Vector2 desiredVelocity = (m_Target).Position - agentInfo->GetPosition(); //Desired Velocity
-	desiredVelocity.Normalize(); // get unit vector
-	if (m_Distance < m_SlowRadius)
-		desiredVelocity *= agentInfo->GetMaxLinearSpeed() * (m_Distance / m_SlowRadius);
-		//(agentInfo->GetMaxLinearSpeed()-agentInfo->GetMaxLinearSpeed()*4/ m_Distance); // Rescale to var speed
-	else
-		desiredVelocity *= agentInfo->GetMaxLinearSpeed(); // Rescale to Max speed
-
-	steering.LinearVelocity = desiredVelocity - steering.LinearVelocity;
-	//DEBUG RENDERING
-	if (agentInfo->CanRenderBehavior())
-		DEBUGRENDERER2D->DrawDirection(agentInfo->GetPosition(), steering.LinearVelocity, 5, { 0,1,0 }, 0.4f);
-	*/
-	return steering;
-}
-
 //FACE
 //****
 SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo agentInfo)
 {
 	SteeringPlugin_Output steering{};
-	/*
-	Elite::Vector2 vec = (m_Target).Position - agentInfo->GetPosition(); // desired orientation
+	float distSqrd = FLT_MAX;
+	Elite::Vector2 toEemy{};
+	Elite::Vector2 direction{};
+	EntityInfo closestEnemy{};
+	for (auto& enemy : m_avoidVec)
+	{
+		if (distSqrd < Elite::DistanceSquared(enemy.Location, agentInfo.Position))
+		{
+			closestEnemy = enemy;
+			distSqrd = Elite::DistanceSquared(enemy.Location, agentInfo.Position);
+		}
+	}
+	Elite::Vector2 vec = closestEnemy.Location - agentInfo.Position; // desired orientation
 	m_desired = atan2(vec.y, vec.x);
-	m_current = agentInfo->GetRotation() - ToRadians(90); 
+	/*m_current = agentInfo- ToRadians(90); 
 	printf("current: %f,    desired: %f \n", ToDegrees(m_current),ToDegrees(m_desired));
 	steering.AngularVelocity = (m_desired - m_current)*4; //Desired Velocity
 
@@ -184,6 +171,7 @@ AgentSteering::AgentSteering()
 	m_pSeek = new Seek();
 	m_pFlee = new Flee();
 	m_pAvoid = new Avoid();
+	m_pAvoid = new Face();
 }
 
 AgentSteering::~AgentSteering()
@@ -194,6 +182,7 @@ AgentSteering::~AgentSteering()
 	SAFE_DELETE(m_pSeek);
 	SAFE_DELETE(m_pFlee);
 	SAFE_DELETE(m_pAvoid);
+	SAFE_DELETE(m_pFace);
 }
 
 void AgentSteering::CalculateSteering(float dt, AgentInfo agentInfo)
@@ -225,6 +214,12 @@ void AgentSteering::SetToFlee(Elite::Vector2 targetPos)
 void AgentSteering::SetToAvoid(vector<EntityInfo> avoidVec)
 {
 	m_pAvoid->SetEntitiesToAvoid(avoidVec);
+	SetSteeringBehavior(m_pAvoid);
+}
+
+void AgentSteering::SetToAvoid(vector<EntityInfo> avoidVec)
+{
+	m_pAvoid->SetEntitiesToFace(avoidVec);
 	SetSteeringBehavior(m_pAvoid);
 }
 

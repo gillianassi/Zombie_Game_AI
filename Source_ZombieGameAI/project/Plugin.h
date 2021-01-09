@@ -4,7 +4,8 @@
 #include "SteeringBehaviors.h"
 
 class IBaseInterface;
-class ExtraInterfaceInfo;
+class IExamInterface;
+class ExamInterfaceWrapper;
 
 class Plugin :public IExamPlugin
 {
@@ -24,7 +25,8 @@ public:
 
 private:
 	//Interface, used to request data from/perform actions with the AI Framework
-	ExtraInterfaceInfo* m_pInterface = nullptr;
+	IExamInterface* m_pInterface = nullptr;
+	ExamInterfaceWrapper* m_pInterfaceWrapper = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
 	Elite::Blackboard* CreateBlackboard(AgentSteering* steering);

@@ -96,7 +96,7 @@ public:
 
 	//Flee Behaviour
 	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-	void SetEntitiesToAvoid(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
+	void SetEntitiesToFace(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
 
 private:
 	vector<EntityInfo> m_avoidVec{};
@@ -135,11 +135,12 @@ public:
 
 	//Face Behaviour
 	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
+	void SetEntitiesToAvoid(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
 
-
-protected:
+private:
 	float m_desired = 0.f; // Internal
 	float m_current = 0.f; //Internal
+	vector<EntityInfo> m_avoidVec{};
 
 };
 
@@ -199,6 +200,7 @@ public:
 	void SetToSeek(Elite::Vector2 targetPos);
 	void SetToFlee(Elite::Vector2 targetPos);
 	void SetToAvoid(vector<EntityInfo> avoidVec);
+	void SetToFace(vector<EntityInfo> avoidVec);
 
 protected:
 	SteeringPlugin_Output m_Agentsteering{};
@@ -208,6 +210,7 @@ protected:
 	Seek* m_pSeek = nullptr;
 	Flee* m_pFlee = nullptr;
 	Avoid* m_pAvoid = nullptr;
+	Avoid* m_pFace = nullptr;
 };
 #endif
 

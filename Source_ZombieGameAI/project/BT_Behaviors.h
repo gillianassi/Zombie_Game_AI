@@ -11,7 +11,6 @@
 //-----------------------------------------------------------------
 #include "../inc/EliteMath/EMath.h"
 #include "EliteDecisionMaking/EliteBehaviorTree/EBehaviorTree.h"
-//#include "IExamInterface.h"
 #include "SteeringBehaviors.h"
 
 //-----------------------------------------------------------------
@@ -25,7 +24,7 @@
 bool EnemyInSight(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
 		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
@@ -58,7 +57,7 @@ bool EnemyInSight(Elite::Blackboard* pBlackboard)
 bool ItemInSight(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
 		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
@@ -68,19 +67,35 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 	// Check for enemies in FOV
 	if (pEntitiesInFOV->size() == 0)
 		return false;
-
+	//pInterface->Agent_HasFood();
 	ItemInfo item = {};
+	AgentInfo agent = pInterface->Agent_GetInfo();
+	bool canGrab = false, success = false;
 	for (auto& entity : *pEntitiesInFOV)
 	{
 		if (entity.Type == eEntityType::ITEM)
 		{
-
 			pInterface->Item_GetInfo(entity, item);
+			canGrab = pInterface->CanGrab(item);
+			if (canGrab)
+			{
+				if (agent.Position.DistanceSquared(entity.Location) < Square(agent.GrabRange))
+				{
+					pInterface->Quick_AddItem(entity);
+					cout << "Grabbed Item" << endl;
+				}
+				else
+				{
+					pBlackboard->ChangeData("TargetPos", entity.Location);
+					success = true;
+				}
+			}
+				
 		}
 	}
-
-	//pBlackboard->ChangeData("AvoidVec", avoidVec);
-	return true;
+	if (success)
+		return true;
+	return false;
 }
 
 
@@ -91,7 +106,7 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 bool HouseInSight(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<HouseInfo>* pHousesInFOV = nullptr;
 	Elite::Vector2 exit{};
 	float* houseTimer= nullptr;
@@ -101,11 +116,12 @@ bool HouseInSight(Elite::Blackboard* pBlackboard)
 		pBlackboard->GetData("ExitPos",exit) &&
 		pBlackboard->GetData("HouseTimer", houseTimer);
 
-	// check if there is interface and fov data
-	// + don't commence if the house timer is initiated or no houses are in sight.
-	if ((!pInterface)||(!pHousesInFOV)||(*houseTimer > 0.f )|| (pHousesInFOV->size() == 0))
+	// check if the data is succesfully feched
+	if ((!pInterface)||(!pHousesInFOV)||(!houseTimer))
 		return false;
-	
+	// don't commence if the house timer is initiated or no houses are in sight.
+	if ((*houseTimer > 0.f) || (pHousesInFOV->size() == 0))
+		return false;
 
 	HouseInfo house = pHousesInFOV->front();
 	AgentInfo agent = pInterface->Agent_GetInfo();
@@ -132,7 +148,7 @@ bool HouseInSight(Elite::Blackboard* pBlackboard)
 bool AgentInHouse(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	bool reached = false;
 	Elite::Vector2 exit{};
 	HouseInfo house{};
@@ -148,6 +164,8 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 	AgentInfo agent = pInterface->Agent_GetInfo();
 	if (!agent.IsInHouse)
 		return false;
+	if (agent.Position.DistanceSquared(house.Center) < 0.5)
+		pBlackboard->ChangeData("HouseCenterReached", true);
 	if (reached)
 	{
 		pBlackboard->ChangeData("TargetPos", exit);
@@ -155,8 +173,6 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 	}
 	else
 	{
-		if (agent.Position.DistanceSquared(pInterface->NavMesh_GetClosestPathPoint(house.Center)) < 0.5)
-			pBlackboard->ChangeData("HouseCenterReached", true);
 		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
 	}
 	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(house.Center), 3.f, { 0,0,1 });
@@ -170,7 +186,7 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 bool IsBitten(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
 	if (!pInterface)
 		return false;
@@ -188,7 +204,7 @@ bool IsBitten(Elite::Blackboard* pBlackboard)
 bool IsSafe(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExtraInterfaceInfo* pInterface = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
 	if (!pInterface)
 		return false;
@@ -283,6 +299,20 @@ BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 }
 
 BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	std::vector<EntityInfo> avoidVec{};
+	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("AvoidVec", avoidVec);
+
+	if (!pSteering)
+		return Failure;
+
+	pSteering->SetToAvoid(avoidVec);
+	cout << "ChangToAvoid" << endl;
+	return Success;
+}
+BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
 	std::vector<EntityInfo> avoidVec{};

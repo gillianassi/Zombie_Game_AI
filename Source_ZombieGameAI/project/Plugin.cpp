@@ -3,7 +3,8 @@
 
 // includes
 #include "Plugin.h"
-#include "ExtraInterfaceInfo.h"
+#include "IExamInterface.h"
+#include "ExamInterfaceWrapper.h"
 #include "BT_Behaviors.h"
 
 Plugin::~Plugin()
@@ -17,8 +18,9 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
 	//Retrieving the interface
 	//This interface gives you access to certain actions the AI_Framework can perform for you
-	m_pInterface = static_cast<ExtraInterfaceInfo*>(pInterface);
-
+	m_pInterface = static_cast<IExamInterface*>(pInterface);
+	m_pInterfaceWrapper = new ExamInterfaceWrapper(m_pInterface);
+	m_pInterfaceWrapper->Agent_HasFood();
 	//Bit information about the plugin
 	//Please fill this in!!
 	info.BotName = "Champion";
@@ -32,6 +34,11 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	Blackboard* pB = CreateBlackboard(m_pAgentsteering);
 	BehaviorTree* pBT = new BehaviorTree(pB, 
 		new BehaviorSelector({
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(ItemInSight),
+					new BehaviorAction(ChangeToSeek)
+				}),
 			new BehaviorSequence(
 				{
 					new BehaviorConditional(AgentInHouse),
@@ -125,7 +132,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
 	auto steering = SteeringPlugin_Output();
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
-	auto agentInfo = m_pInterface->Agent_GetInfo();
+	auto agentInfo = m_pInterfaceWrapper->Agent_GetInfo();
 
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 	m_HousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
@@ -135,38 +142,23 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		if (e.Type == eEntityType::PURGEZONE)
 		{
 			PurgeZoneInfo zoneInfo;
-			m_pInterface->PurgeZone_GetInfo(e, zoneInfo);
+			m_pInterfaceWrapper->PurgeZone_GetInfo(e, zoneInfo);
 			std::cout << "Purge Zone in FOV:" << e.Location.x << ", " << e.Location.y << " ---EntityHash: " << e.EntityHash << "---Radius: " << zoneInfo.Radius << std::endl;
 		}
 	}
 
 	//INVENTORY USAGE DEMO
 	//********************
-	if (m_GrabItem)
-	{
-		ItemInfo item;
-		//Item_Grab > When DebugParams.AutoGrabClosestItem is TRUE, the Item_Grab function returns the closest item in range
-		//Keep in mind that DebugParams are only used for debugging purposes, by default this flag is FALSE
-		//Otherwise, use GetEntitiesInFOV() to retrieve a vector of all entities in the FOV (EntityInfo)
-		//Item_Grab gives you the ItemInfo back, based on the passed EntityHash (retrieved by GetEntitiesInFOV)
-		if (m_pInterface->Item_Grab({}, item))
-		{
-			//Once grabbed, you can add it to a specific inventory slot
-			//Slot must be empty
-			m_pInterface->Inventory_AddItem(0, item);
-		}
-	}
-
 	if (m_UseItem)
 	{
 		//Use an item (make sure there is an item at the given inventory slot)
-		m_pInterface->Inventory_UseItem(0);
+		m_pInterfaceWrapper->Inventory_UseItem(0);
 	}
 
 	if (m_RemoveItem)
 	{
 		//Remove an item from a inventory slot
-		m_pInterface->Inventory_RemoveItem(0);
+		m_pInterfaceWrapper->Inventory_RemoveItem(0);
 	}
 	
 	
@@ -206,7 +198,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
-	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+	m_pInterfaceWrapper->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const
@@ -216,7 +208,7 @@ vector<HouseInfo> Plugin::GetHousesInFOV() const
 	HouseInfo hi = {};
 	for (int i = 0;; ++i)
 	{
-		if (m_pInterface->Fov_GetHouseByIndex(i, hi))
+		if (m_pInterfaceWrapper->Fov_GetHouseByIndex(i, hi))
 		{
 			vHousesInFOV.push_back(hi);
 			continue;
@@ -235,7 +227,7 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	EntityInfo ei = {};
 	for (int i = 0;; ++i)
 	{
-		if (m_pInterface->Fov_GetEntityByIndex(i, ei))
+		if (m_pInterfaceWrapper->Fov_GetEntityByIndex(i, ei))
 		{
 			vEntitiesInFOV.push_back(ei);
 			continue;
@@ -251,7 +243,7 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 {
 	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
 	pBlackboard->AddData("pAgentSteering", pSteering);
-	pBlackboard->AddData("pInterface", m_pInterface);
+	pBlackboard->AddData("pInterface", m_pInterfaceWrapper);
 	pBlackboard->AddData("pEntitiesInFOV", &m_EntitiesInFOV);
 	pBlackboard->AddData("pHousesInFOV", &m_HousesInFOV);
 	//pBlackboard->AddData("pTargetEntity", static_cast<EntityInfo*>(nullptr));
