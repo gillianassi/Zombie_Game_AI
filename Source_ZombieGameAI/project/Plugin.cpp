@@ -3,7 +3,7 @@
 
 // includes
 #include "Plugin.h"
-#include "IExamInterface.h"
+#include "ExtraInterfaceInfo.h"
 #include "BT_Behaviors.h"
 
 Plugin::~Plugin()
@@ -17,7 +17,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
 	//Retrieving the interface
 	//This interface gives you access to certain actions the AI_Framework can perform for you
-	m_pInterface = static_cast<IExamInterface*>(pInterface);
+	m_pInterface = static_cast<ExtraInterfaceInfo*>(pInterface);
 
 	//Bit information about the plugin
 	//Please fill this in!!
@@ -114,12 +114,11 @@ void Plugin::Update(float dt)
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
 	auto steering = SteeringPlugin_Output();
-
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
-	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
+	m_HousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
 	for (auto& e : m_EntitiesInFOV)
 	{
@@ -133,7 +132,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//INVENTORY USAGE DEMO
 	//********************
-	/*
 	if (m_GrabItem)
 	{
 		ItemInfo item;
@@ -160,7 +158,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		//Remove an item from a inventory slot
 		m_pInterface->Inventory_RemoveItem(0);
 	}
-	*/
+	
 	
 	// Handle steeirng
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
@@ -242,6 +240,7 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("pAgentSteering", pSteering);
 	pBlackboard->AddData("pInterface", m_pInterface);
 	pBlackboard->AddData("pEntitiesInFOV", &m_EntitiesInFOV);
+	pBlackboard->AddData("pHousesInFOV", &m_HousesInFOV);
 	//pBlackboard->AddData("pTargetEntity", static_cast<EntityInfo*>(nullptr));
 	pBlackboard->AddData("TargetPos", Elite::Vector2{});
 	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});

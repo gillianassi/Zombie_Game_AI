@@ -187,6 +187,7 @@
     <ClInclude Include="EliteDecisionMaking\EDecisionMaking.h" />
     <ClInclude Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.h" />
     <ClInclude Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h" />
+    <ClInclude Include="ExtraInterfaceInfo.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SteeringBehaviors.h" />
@@ -194,6 +195,7 @@
   <ItemGroup>
     <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
+    <ClCompile Include="ExtraInterfaceInfo.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
