@@ -1,34 +1,32 @@
 #include "stdafx.h"
 #include "ExamInterfaceWrapper.h"
 
+bool ExamInterfaceWrapper::Inventory_RemoveItem(UINT slotId)
+{
+	m_ItemVec[slotId] = eItemType::RANDOM_DROP;
+	return m_pInterface->Inventory_RemoveItem(slotId);
+}
+
 void ExamInterfaceWrapper::Quick_AddItem(EntityInfo i)
 {
 	ItemInfo item{};
 	Item_Grab(i, item);
 	int slot = SearchEmptyItemSlot();
 	Inventory_AddItem(slot, item);
-	m_freeSlots[slot] = false;
+	m_ItemVec[slot] = item.Type;
 	if (item.Type == eItemType::PISTOL)
 	{
 		m_pistols++;
-		m_hasGun = true;
-	}
-		
-	else if (item.Type == eItemType::FOOD)
-	{
-		m_food++;
-		m_hasFood = true;
 	}
 	else if (item.Type == eItemType::MEDKIT)
 	{
 		m_medKits++;
-		m_hasMedKit = true;
 	}
-
-}
-
-void ExamInterfaceWrapper::Quick_DropItem(int itemSlot)
-{
+	else if (item.Type == eItemType::FOOD)
+	{
+		m_food++;
+	}
+	m_ItemVec[slot] = item.Type;
 
 }
 
@@ -36,12 +34,13 @@ bool ExamInterfaceWrapper::ExesSlots()
 {
 	// check all spots 1 by 1 and reserve a spot for each
 	int exes = 5;
-	if (m_hasGun)
+	if (Agent_HasGun())
 		exes -= max(1,m_pistols);
-	if (m_hasFood)
-		exes -= max(1, m_food);
-	if (m_hasMedKit)
+
+	if (Agent_HasFood())
 		exes -= max(1, m_medKits);
+	if (Agent_HasMedKit())
+		exes -= max(1, m_food);
 
 	// return true of there are exes slots
 	return exes > 0;
@@ -49,13 +48,13 @@ bool ExamInterfaceWrapper::ExesSlots()
 
 int ExamInterfaceWrapper::SearchEmptyItemSlot()
 {
-	auto slotIT = std::find_if(m_freeSlots.begin(), m_freeSlots.end(),[](bool free)
+	auto slotIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(),[](eItemType slot)
 		{
-			return (free == true);
+			return (slot == eItemType::RANDOM_DROP);
 		});
-	if (slotIT != m_freeSlots.end())
+	if (slotIT != m_ItemVec.end())
 	{
-		return  slotIT - m_freeSlots.begin();
+		return  slotIT - m_ItemVec.begin();
 	}
 	return -1;
 
@@ -63,9 +62,9 @@ int ExamInterfaceWrapper::SearchEmptyItemSlot()
 
 int ExamInterfaceWrapper::SearchSlotWithItem(eItemType type)
 {
-	auto itemIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&type](ItemInfo info)
+	auto itemIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&type](eItemType info)
 		{
-			return info.Type == type;
+			return info == type;
 		});
 	if (itemIT != m_ItemVec.end())
 	{
@@ -80,15 +79,15 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	switch (i.Type)
 	{
 	case eItemType::PISTOL:
-		return(!m_hasGun || ExesSlots());
-		break;
-
-	case eItemType::FOOD:
-		return (!m_hasFood || ExesSlots());
+		return(!Agent_HasGun() || ExesSlots());
 		break;
 
 	case eItemType::MEDKIT:
-		return (!m_hasMedKit || ExesSlots());
+		return (!Agent_HasMedKit() || ExesSlots());
+		break;
+
+	case eItemType::FOOD:
+		return (!Agent_HasFood() || ExesSlots());
 		break;
 
 	default:
@@ -98,14 +97,39 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	return false;
 }
 
-void ExamInterfaceWrapper::Shoot()
+void ExamInterfaceWrapper::UseItem(eItemType type)
 {
-	if (!m_hasGun)
-		cout << "No Gun" << endl;
-	else
+	int slot = SearchSlotWithItem(type);
+	if (slot == -1) {
+		cout << "Warning! :: Item not in Inventory" << endl;
+		return;
+	}
+	Inventory_UseItem(slot);
+	ItemInfo item{};
+	Inventory_GetItem(slot, item);
+	// delete if it is not a gun, if it is a gun, delete if ammo reaches 0
+	switch (type)
 	{
-		int slot = SearchSlotWithItem(eItemType::PISTOL);
-		Inventory_UseItem(slot);
+	case eItemType::PISTOL:
+		if (Weapon_GetAmmo(item) == 0)
+		{
+			Inventory_RemoveItem(slot);
+			m_pistols--;
+		}
+		break;
+
+	case eItemType::FOOD:
+		Inventory_RemoveItem(slot);
+		m_food--;
+		break;
+
+	case eItemType::MEDKIT:
+		Inventory_RemoveItem(slot);
+		m_medKits--;
+		break;
+
+	default:
+		break;
 	}
 
 }

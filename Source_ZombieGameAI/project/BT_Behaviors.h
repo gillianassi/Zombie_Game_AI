@@ -406,7 +406,7 @@ BehaviorState ChangeToShoot(Elite::Blackboard* pBlackboard)
 		return Failure;
 
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
-	pInterface->Shoot();
+	pInterface->UseItem(eItemType::PISTOL);
 	pSteering->SetToFace(targetPos);
 	cout << "ChangeToShoot" << endl;
 	return Success;

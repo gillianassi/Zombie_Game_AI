@@ -29,7 +29,7 @@ public:
 	//INVENTORY
 	virtual bool Inventory_AddItem(UINT slotId, ItemInfo item) { return m_pInterface->Inventory_AddItem(slotId,item); }
 	virtual bool Inventory_UseItem(UINT slotId) { return m_pInterface->Inventory_UseItem(slotId); }
-	virtual bool Inventory_RemoveItem(UINT slotId) { return m_pInterface->Inventory_RemoveItem(slotId); }
+	virtual bool Inventory_RemoveItem(UINT slotId);
 	virtual bool Inventory_GetItem(UINT slotId, ItemInfo& item) { return m_pInterface->Inventory_GetItem(slotId, item); }
 	virtual UINT Inventory_GetCapacity() { return m_pInterface->Inventory_GetCapacity(); }
 
@@ -78,23 +78,21 @@ public:
 	/////////////////////////////////////
 	//			Wraped Functions
 	/////////////////////////////////////
-	virtual bool Agent_HasGun() { return m_hasGun; };
-	virtual bool Agent_HasMedKit() { return m_hasMedKit; };
-	virtual bool Agent_HasFood() { return m_hasFood; };
+	virtual bool Agent_HasGun() { return (m_pistols>0); };
+	virtual bool Agent_HasMedKit() { return  (m_food > 0); };
+	virtual bool Agent_HasFood() { return  (m_medKits > 0); };
 
 	virtual void Quick_AddItem(EntityInfo i);
-	virtual void Quick_DropItem(int itemSlot);
 	virtual bool ExesSlots();
 	virtual int SearchSlotWithItem(eItemType type);
 	virtual int SearchEmptyItemSlot();
 	virtual bool CanGrab(ItemInfo i);
-	virtual void Shoot();
+	virtual void UseItem(eItemType type);
 
 protected:
 	IExamInterface* m_pInterface = nullptr;
-	std::vector<ItemInfo> m_ItemVec = std::vector<ItemInfo>(5);
-	std::vector<bool> m_freeSlots = std::vector<bool>(5, true);
+	// use Random_drop as an empty space inside the item vec
+	std::vector<eItemType> m_ItemVec = std::vector<eItemType>(5,eItemType::RANDOM_DROP);
 	int m_CurrentSlot = 0;
-	bool m_hasGun =false, m_hasFood=false, m_hasMedKit = false;
 	int m_pistols = 0, m_food = 0, m_medKits = 0;
 };
