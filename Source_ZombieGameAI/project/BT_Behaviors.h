@@ -69,6 +69,7 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 		return false;
 	//pInterface->Agent_HasFood();
 	ItemInfo item = {};
+	EntityInfo closestEntity{};
 	AgentInfo agent = pInterface->Agent_GetInfo();
 	bool canGrab = false, success = false;
 	for (auto& entity : *pEntitiesInFOV)
@@ -86,16 +87,16 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 				}
 				else
 				{
-					pBlackboard->ChangeData("TargetPos", entity.Location);
+					closestEntity = entity;
 					success = true;
 				}
 			}
 				
 		}
 	}
-	if (success)
-		return true;
-	return false;
+	if(success)
+		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(closestEntity.Location));
+	return success;
 }
 
 
@@ -167,10 +168,7 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 	if (agent.Position.DistanceSquared(house.Center) < 0.5)
 		pBlackboard->ChangeData("HouseCenterReached", true);
 	if (reached)
-	{
-		pBlackboard->ChangeData("TargetPos", exit);
-		cout << "center reached: going to exit" << endl;
-	}
+		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(exit));
 	else
 	{
 		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
@@ -216,9 +214,51 @@ bool IsSafe(Elite::Blackboard* pBlackboard)
 
 	return false;
 }
-bool IsCloseToBetaAgent(Elite::Blackboard* pBlackboard)
+bool HasGun(Elite::Blackboard* pBlackboard)
 {
-	
+	//Get data from blackboard
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+	if (!pInterface)
+		return false;
+	if(pInterface->Agent_HasGun())
+		return true;
+	else
+		return false;
+}
+bool EnemyAligned(Elite::Blackboard* pBlackboard)
+{
+	ExamInterfaceWrapper* pInterface = nullptr;
+	std::vector<EntityInfo> avoidVec{};
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("AvoidVec", avoidVec);
+
+	if ((!pInterface)||(avoidVec.size() == 0))
+		return false;
+
+	float closestDist = FLT_MAX;
+	EntityInfo closestEnemy{};
+	AgentInfo agent = pInterface->Agent_GetInfo();
+	Elite::Vector2 pos = agent.Position;
+	for (auto& enemy : avoidVec)
+	{
+		if (Elite::DistanceSquared(enemy.Location, pos) < closestDist)
+		{
+			closestEnemy = enemy;
+			closestDist = Elite::DistanceSquared(enemy.Location, pos);
+		}
+	}
+	// Change param for face behavior if it's not alligned
+	// Just enemy location, not closest path, Could cause agent to incorrectly face if the agent is next to a corner
+	pBlackboard->ChangeData("TargetPos", closestEnemy.Location);
+	// Get vector to agent
+	Elite::Vector2 dir = closestEnemy.Location - agent.Position;
+	// Get agent orientation
+	float oriRad = float(agent.Orientation - (double)b2_pi * 0.5);
+	Elite::Vector2 orientation = { cos(oriRad), sin(float(oriRad)) };
+	if (Dot(orientation.GetNormalized(), dir.GetNormalized()) >= 0.998)
+		return true;
+
 	return false;
 }
 //-----------------------------------------------------------------
@@ -234,7 +274,7 @@ BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	if ((!pSteering))
 		return Failure;
 
-	//pSteering->SetToWander();
+	pSteering->SetToWander();
 	cout << "ChangToWander" << endl;
 	return Success;
 }
@@ -255,15 +295,15 @@ BehaviorState ChangeToPanic(Elite::Blackboard* pBlackboard)
 BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
-	Elite::Vector2 pTargetPos{};
+	Elite::Vector2 TargetPos{};
 	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
-		pBlackboard->GetData("TargetPos", pTargetPos);
+		pBlackboard->GetData("TargetPos", TargetPos);
 
 	if (!pSteering)
 		return Failure;
 
 	cout << "ChangToSeek" << endl;
-	pSteering->SetToSeek(pTargetPos);
+	pSteering->SetToSeek(TargetPos);
 
 	return Success;
 }
@@ -271,14 +311,14 @@ BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 BehaviorState ChangeToEnter(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
-	Elite::Vector2 pTargetPos{};
+	Elite::Vector2 TargetPos{};
 	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
-		pBlackboard->GetData("TargetPos", pTargetPos);
+		pBlackboard->GetData("TargetPos", TargetPos);
 
 	if (!pSteering)
 		return Failure;
 
-	pSteering->SetToSeek(pTargetPos);
+	pSteering->SetToSeek(TargetPos);
 
 	return Success;
 }
@@ -286,14 +326,14 @@ BehaviorState ChangeToEnter(Elite::Blackboard* pBlackboard)
 BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
-	Elite::Vector2 pTargetPos{};
+	Elite::Vector2 TargetPos{};
 	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
-		pBlackboard->GetData("TargetPos", pTargetPos);
+		pBlackboard->GetData("TargetPos", TargetPos);
 
 	if (!pSteering)
 		return Failure;
 
-	pSteering->SetToFlee(pTargetPos);
+	pSteering->SetToFlee(TargetPos);
 	cout << "ChangToFlee" << endl;
 	return Success;
 }
@@ -330,7 +370,7 @@ BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
 	linearVel = direction + orientation; //Desired Velocity
 	linearVel.Normalize(); // get unit vector
 	Elite::Vector2 target =pInterface->NavMesh_GetClosestPathPoint(linearVel + agentInfo.Position);
-	pInterface->Draw_Point(target, 3.f, { 1,0,0 });
+	pInterface->Draw_Point(target, 10.f, { 1,0,0 });
 	pSteering->SetToSeek(target);
 	cout << "ChangToAvoid" << endl;
 	return Success;
@@ -339,29 +379,35 @@ BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
 	ExamInterfaceWrapper* pInterface = nullptr;
-	std::vector<EntityInfo> avoidVec{};
+	Elite::Vector2 targetPos{};
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) && 
 		pBlackboard->GetData("pAgentSteering", pSteering) &&
-		pBlackboard->GetData("AvoidVec", avoidVec);
+		pBlackboard->GetData("TargetPos", targetPos);
 
 	if ((!pSteering) || (!pInterface))
 		return Failure;
-	float closestDist = FLT_MAX;
-	EntityInfo closestEnemy{};
-	AgentInfo agentInfo = pInterface->Agent_GetInfo();
-	Elite::Vector2 pos = agentInfo.Position;
-	for (auto& enemy : avoidVec)
-	{
-		if (Elite::DistanceSquared(enemy.Location, pos) < closestDist)
-		{
-			closestEnemy = enemy;
-			closestDist = Elite::DistanceSquared(enemy.Location, pos);
-		}
-	}
-	// Just enemy location, not closest path, Could cause agent to incorrectly face if the agent is next to a corner
+
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
-	pSteering->SetToFace(closestEnemy.Location);
-	cout << "ChangToFace" << endl;
+	pSteering->SetToFace(targetPos);
+	cout << "ChangeToFace" << endl;
+	return Success;
+}
+
+BehaviorState ChangeToShoot(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
+	Elite::Vector2 targetPos{};
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) && 
+		pBlackboard->GetData("pAgentSteering", pSteering) &&
+		pBlackboard->GetData("TargetPos", targetPos);
+
+	if ((!pSteering) || (!pInterface))
+		return Failure;
+
+	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
+	pSteering->SetToFace(targetPos);
+	cout << "ChangeToShoot" << endl;
 	return Success;
 }
 #endif

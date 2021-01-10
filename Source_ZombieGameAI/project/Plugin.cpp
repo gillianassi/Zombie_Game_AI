@@ -36,6 +36,21 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		new BehaviorSelector({
 			new BehaviorSequence(
 				{
+					new BehaviorConditional(EnemyInSight),
+					new BehaviorConditional(HasGun),
+					new BehaviorSelector(
+					{
+						new BehaviorSequence(
+						{
+							new BehaviorConditional(EnemyAligned),
+							new BehaviorAction(ChangeToShoot)
+						}),
+						new BehaviorAction(ChangeToFace)
+					})
+					
+				}),
+			new BehaviorSequence(
+				{
 					new BehaviorConditional(ItemInSight),
 					new BehaviorAction(ChangeToSeek)
 				}),
@@ -52,7 +67,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 			new BehaviorSequence(
 				{
 					new BehaviorConditional(EnemyInSight),
-					new BehaviorAction(ChangeToFace)
+					new BehaviorAction(ChangeToAvoid)
 				}),
 			new BehaviorAction(ChangeToWander)
 			})

@@ -106,3 +106,8 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	}
 	return false;
 }
+
+bool ExamInterfaceWrapper::Shoot()
+{
+	return false;
+}

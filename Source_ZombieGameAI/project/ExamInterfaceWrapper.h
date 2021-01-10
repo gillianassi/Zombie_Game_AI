@@ -88,6 +88,7 @@ public:
 	virtual int SearchSlotWithItem(ItemInfo i);
 	virtual int SearchEmptyItemSlot();
 	virtual bool CanGrab(ItemInfo i);
+	virtual bool Shoot();
 
 protected:
 	IExamInterface* m_pInterface = nullptr;
