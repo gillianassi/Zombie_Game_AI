@@ -302,27 +302,64 @@ BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
 	std::vector<EntityInfo> avoidVec{};
-	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pAgentSteering", pSteering) &&
 		pBlackboard->GetData("AvoidVec", avoidVec);
 
-	if (!pSteering)
+	if ((!pSteering)||(!pInterface))
 		return Failure;
 
-	pSteering->SetToAvoid(avoidVec);
+	float distSqrd = 0;
+	Elite::Vector2 vec{};
+	Elite::Vector2 direction{};
+	AgentInfo agentInfo = pInterface->Agent_GetInfo();
+	Elite::Vector2 linearVel = agentInfo.LinearVelocity.GetNormalized();
+	for (auto& enemy : avoidVec)
+	{
+		distSqrd = Elite::DistanceSquared(enemy.Location, agentInfo.Position);
+		// Vector to the enemy
+		vec = (enemy.Location - agentInfo.Position).GetNormalized();
+		// closer targets have more influence on the turn direction 
+		// *10 is to avoid too small numbers dur to the inversional proportionality
+		direction += (linearVel - vec) * agentInfo.MaxAngularSpeed * 10 / distSqrd;
+	}
+	float oriRad = float(agentInfo.Orientation - (double)b2_pi * 0.5);
+	Elite::Vector2 orientation = { cos(oriRad), sin(float(oriRad)) };
+
+	linearVel = direction + orientation; //Desired Velocity
+	linearVel.Normalize(); // get unit vector
+	Elite::Vector2 target =pInterface->NavMesh_GetClosestPathPoint(linearVel + agentInfo.Position);
+	pInterface->Draw_Point(target, 3.f, { 1,0,0 });
+	pSteering->SetToSeek(target);
 	cout << "ChangToAvoid" << endl;
 	return Success;
 }
 BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 {
 	AgentSteering* pSteering = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
 	std::vector<EntityInfo> avoidVec{};
-	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering) &&
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) && 
+		pBlackboard->GetData("pAgentSteering", pSteering) &&
 		pBlackboard->GetData("AvoidVec", avoidVec);
 
 	if (!pSteering)
 		return Failure;
-
-	pSteering->SetToAvoid(avoidVec);
+	float distSqrd = FLT_MAX;
+	EntityInfo closestEnemy{};
+	AgentInfo agentInfo = pInterface->Agent_GetInfo();
+	Elite::Vector2 pos = agentInfo.Position;
+	for (auto& enemy : avoidVec)
+	{
+		if (distSqrd < Elite::DistanceSquared(enemy.Location, pos))
+		{
+			closestEnemy = enemy;
+			distSqrd = Elite::DistanceSquared(enemy.Location, pos);
+		}
+	}
+	// Just enemy location, not closest path, Could cause agent to incorrectly face if the agent is next to a corner
+	pSteering->SetToFace(closestEnemy.Location);
 	cout << "ChangToAvoid" << endl;
 	return Success;
 }

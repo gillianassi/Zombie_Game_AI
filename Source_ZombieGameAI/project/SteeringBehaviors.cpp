@@ -46,63 +46,31 @@ SteeringPlugin_Output Flee::CalculateSteering(float deltaT, AgentInfo agentInfo)
 
 	return steering;
 }
-//Avoid
-//****
-SteeringPlugin_Output Avoid::CalculateSteering(float deltaT, AgentInfo agentInfo)
-{
-
-	SteeringPlugin_Output steering{};
-	float distSqrd = 0;
-	Elite::Vector2 toEemy{};
-	Elite::Vector2 direction{};
-	for (auto& enemy : m_avoidVec)
-	{
-		distSqrd = Elite::DistanceSquared(enemy.Location, agentInfo.Position);
-		toEemy = (enemy.Location - agentInfo.Position).GetNormalized();
-		// closer targets have more influence on the turn direction 
-		// *10 is to avoid too small numbers dur to the inversional proportionality
-		direction += (agentInfo.LinearVelocity.GetNormalized() - toEemy) * agentInfo.MaxAngularSpeed * 10 / distSqrd;
-	}
-	//Get agent orientation
-	float oriRad = float(agentInfo.Orientation - (double)b2_pi * 0.5);
-	Elite::Vector2 orientation = { cos(oriRad), sin(float(oriRad)) };
-
-	steering.LinearVelocity = direction+ orientation; //Desired Velocity
-	steering.LinearVelocity.Normalize(); // get unit vector
-	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; // Rescale to Max speed
-
-	return steering;
-}
 
 //FACE
 //****
 SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo agentInfo)
 {
 	SteeringPlugin_Output steering{};
-	float distSqrd = FLT_MAX;
-	Elite::Vector2 toEemy{};
-	Elite::Vector2 direction{};
-	EntityInfo closestEnemy{};
-	for (auto& enemy : m_avoidVec)
-	{
-		if (distSqrd < Elite::DistanceSquared(enemy.Location, agentInfo.Position))
-		{
-			closestEnemy = enemy;
-			distSqrd = Elite::DistanceSquared(enemy.Location, agentInfo.Position);
-		}
-	}
-	Elite::Vector2 vec = closestEnemy.Location - agentInfo.Position; // desired orientation
-	m_desired = atan2(vec.y, vec.x);
-	/*m_current = agentInfo- ToRadians(90); 
-	printf("current: %f,    desired: %f \n", ToDegrees(m_current),ToDegrees(m_desired));
-	steering.AngularVelocity = (m_desired - m_current)*4; //Desired Velocity
 
-	//DEBUG RENDERING
-	if (agentInfo->CanRenderBehavior())
-	{
-		DEBUGRENDERER2D->DrawDirection(agentInfo->GetPosition(), vec, 5, { 0,1,1 }, 0.4f);
-	}
-		*/
+	const Elite::Vector2 toTarget{ m_pTarget - agentInfo.Position };
+
+	const  float to{ atan2f(toTarget.y, toTarget.x) + float(E_PI_2) };
+	float from{ agentInfo.Orientation };
+	from = atan2f(sinf(from), cosf(from));
+	float desired = to - from;
+
+	const float Pi2 = float(E_PI) * 2.f;
+	if (desired > E_PI)
+		desired -= Pi2;
+	else if (desired < -E_PI)
+		desired += Pi2;
+
+	// multiply desired by some value to make it go as fast as possible (30.f)
+	steering.AngularVelocity = desired * 30.f;
+
+	steering.AutoOrient = false;
+
 	return steering;
 }
 
@@ -170,8 +138,7 @@ AgentSteering::AgentSteering()
 	m_pWander = new Wander();
 	m_pSeek = new Seek();
 	m_pFlee = new Flee();
-	m_pAvoid = new Avoid();
-	m_pAvoid = new Face();
+	m_pFace = new Face();
 }
 
 AgentSteering::~AgentSteering()
@@ -181,7 +148,6 @@ AgentSteering::~AgentSteering()
 	SAFE_DELETE(m_pWander);
 	SAFE_DELETE(m_pSeek);
 	SAFE_DELETE(m_pFlee);
-	SAFE_DELETE(m_pAvoid);
 	SAFE_DELETE(m_pFace);
 }
 
@@ -211,15 +177,9 @@ void AgentSteering::SetToFlee(Elite::Vector2 targetPos)
 	SetSteeringBehavior(m_pFlee);
 }
 
-void AgentSteering::SetToAvoid(vector<EntityInfo> avoidVec)
+void AgentSteering::SetToFace(Elite::Vector2 TargetPos)
 {
-	m_pAvoid->SetEntitiesToAvoid(avoidVec);
-	SetSteeringBehavior(m_pAvoid);
-}
-
-void AgentSteering::SetToAvoid(vector<EntityInfo> avoidVec)
-{
-	m_pAvoid->SetEntitiesToFace(avoidVec);
-	SetSteeringBehavior(m_pAvoid);
+	m_pFace->SetTarget(TargetPos);
+	SetSteeringBehavior(m_pFace);
 }
 

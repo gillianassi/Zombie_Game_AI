@@ -86,45 +86,6 @@ public:
 };
 
 ///////////////////////////////////////
-//AVOID
-//****
-class Avoid : public ISteeringBehavior
-{
-public:
-	Avoid() = default;
-	virtual ~Avoid() = default;
-
-	//Flee Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-	void SetEntitiesToFace(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
-
-private:
-	vector<EntityInfo> m_avoidVec{};
-};
-
-///////////////////////////////////////
-//ARRIVE
-//****
-class Arrive : public ISteeringBehavior
-{
-public:
-	Arrive() = default;
-	virtual ~Arrive() = default;
-
-	//Arrive Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-	void SetSlowRadius(float slowRadius) { m_SlowRadius = slowRadius; }
-	void SetTargetRadius(float targetRadius) { m_TargetRadius = targetRadius; }
-
-protected:
-	float m_MaxDistance = 10.0f; 
-	float m_Distance = 0.f; //Internal
-	float m_SlowRadius = 3.0f; // When it starts slowing down
-	float m_TargetRadius = 1.0f; // When it starts slowing down
-
-};
-
-///////////////////////////////////////
 //FACE
 //****
 class Face : public ISteeringBehavior
@@ -135,12 +96,7 @@ public:
 
 	//Face Behaviour
 	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-	void SetEntitiesToAvoid(vector<EntityInfo> avoidVec) { m_avoidVec = avoidVec; }
 
-private:
-	float m_desired = 0.f; // Internal
-	float m_current = 0.f; //Internal
-	vector<EntityInfo> m_avoidVec{};
 
 };
 
@@ -199,8 +155,8 @@ public:
 	void SetToWander();
 	void SetToSeek(Elite::Vector2 targetPos);
 	void SetToFlee(Elite::Vector2 targetPos);
-	void SetToAvoid(vector<EntityInfo> avoidVec);
-	void SetToFace(vector<EntityInfo> avoidVec);
+	void SetToAvoid(Elite::Vector2 TargetPos);
+	void SetToFace(Elite::Vector2 targetPos);
 
 protected:
 	SteeringPlugin_Output m_Agentsteering{};
@@ -209,8 +165,7 @@ protected:
 	Wander* m_pWander = nullptr;
 	Seek* m_pSeek = nullptr;
 	Flee* m_pFlee = nullptr;
-	Avoid* m_pAvoid = nullptr;
-	Avoid* m_pFace = nullptr;
+	Face* m_pFace = nullptr;
 };
 #endif
 
