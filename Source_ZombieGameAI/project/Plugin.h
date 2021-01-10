@@ -2,6 +2,7 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 #include "SteeringBehaviors.h"
+#include <chrono>
 
 class IBaseInterface;
 class IExamInterface;
@@ -33,7 +34,9 @@ private:
 
 
 	Elite::Vector2 m_Target = {};
-	bool m_CanRun = false; //Demo purpose
+	bool m_CanRun = false; 
+	bool m_Returning = false; 
+	bool m_AgentRage = false; 
 	bool m_GrabItem = false; //Demo purpose
 	bool m_UseItem = false; //Demo purpose
 	bool m_RemoveItem = false; //Demo purpose
@@ -45,6 +48,9 @@ private:
 	Elite::IDecisionMaking* m_pDecisionMaking = nullptr;
 	std::vector<EntityInfo> m_EntitiesInFOV{};
 	std::vector<HouseInfo> m_HousesInFOV{};
+	std::chrono::system_clock::time_point m_lastBitten = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point m_LastOutOfBounds = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point m_TimeNow = std::chrono::system_clock::now();
 
 };
 

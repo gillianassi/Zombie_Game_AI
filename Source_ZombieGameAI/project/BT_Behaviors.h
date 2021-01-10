@@ -12,6 +12,7 @@
 #include "../inc/EliteMath/EMath.h"
 #include "EliteDecisionMaking/EliteBehaviorTree/EBehaviorTree.h"
 #include "SteeringBehaviors.h"
+#include <chrono>
 
 //-----------------------------------------------------------------
 // Behavior Conditions
@@ -35,7 +36,7 @@ bool EnemyInSight(Elite::Blackboard* pBlackboard)
 	if (pEntitiesInFOV->size() == 0)
 		return false;
 
-	std::vector<EntityInfo> avoidVec = {};
+	std::vector<EntityInfo> avoidVec{};
 	for (auto& entity : *pEntitiesInFOV)
 	{
 		if (entity.Type == eEntityType::ENEMY)
@@ -48,6 +49,36 @@ bool EnemyInSight(Elite::Blackboard* pBlackboard)
 
 	pBlackboard->ChangeData("AvoidVec", avoidVec);
 	return true;
+}
+
+bool PurgeZoneInSight(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExamInterfaceWrapper* pInterface = nullptr;
+	vector<EntityInfo>* pEntitiesInFOV = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
+	if ((!pInterface)||(!pEntitiesInFOV))
+		return false;
+	
+	// Check for enemies in FOV
+	if (pEntitiesInFOV->size() == 0)
+		return false;
+
+	for (auto& entity : *pEntitiesInFOV)
+	{
+		if (entity.Type == eEntityType::PURGEZONE)
+		{
+			PurgeZoneInfo purgeZoneInfo{};
+			pInterface->PurgeZone_GetInfo(entity, purgeZoneInfo);
+			Elite::Vector2 dir = -(purgeZoneInfo.Center - pInterface->Agent_GetInfo().Position);
+			Elite::Vector2 targetPos = dir.GetNormalized()*(purgeZoneInfo.Radius+5) + pInterface->Agent_GetInfo().Position;
+			pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(targetPos), 3.f, { 1,0,0 });
+			pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(targetPos));
+			return true;
+		}
+	}
+	return false;
 }
 
 /// Check if enemies are in sight 
@@ -71,26 +102,23 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 	ItemInfo item = {};
 	EntityInfo closestEntity{};
 	AgentInfo agent = pInterface->Agent_GetInfo();
-	bool canGrab = false, success = false;
+	bool success = false;
 	for (auto& entity : *pEntitiesInFOV)
 	{
 		if (entity.Type == eEntityType::ITEM)
 		{
 			pInterface->Item_GetInfo(entity, item);
-			canGrab = pInterface->CanGrab(item);
-			if (canGrab)
-			{
+			if (pInterface->CanGrab(item))
 				if (agent.Position.DistanceSquared(entity.Location) < Square(agent.GrabRange))
 				{
-					pInterface->Quick_AddItem(entity);
 					cout << "Grabbed Item" << endl;
+					pInterface->Quick_AddItem(entity);
 				}
 				else
 				{
 					closestEntity = entity;
 					success = true;
 				}
-			}
 				
 		}
 	}
@@ -110,28 +138,38 @@ bool HouseInSight(Elite::Blackboard* pBlackboard)
 	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<HouseInfo>* pHousesInFOV = nullptr;
 	Elite::Vector2 exit{};
-	float* houseTimer= nullptr;
+	bool searching = false;
+	HouseInfo houseInfo{};
 
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
 		pBlackboard->GetData("pHousesInFOV", pHousesInFOV) &&
-		pBlackboard->GetData("ExitPos",exit) &&
-		pBlackboard->GetData("HouseTimer", houseTimer);
+		pBlackboard->GetData("ExitPos", exit) &&
+		pBlackboard->GetData("SearchBuilding", searching) &&
+		pBlackboard->GetData("HouseInfo", houseInfo);
 
 	// check if the data is succesfully feched
-	if ((!pInterface)||(!pHousesInFOV)||(!houseTimer))
+	if ((!pInterface)||(!pHousesInFOV))
 		return false;
 	// don't commence if the house timer is initiated or no houses are in sight.
-	if ((*houseTimer > 0.f) || (pHousesInFOV->size() == 0))
+	if ((pHousesInFOV->size() == 0) && (!searching))
 		return false;
 
-	HouseInfo house = pHousesInFOV->front();
+	HouseInfo house{};
+	if (searching)
+		house = houseInfo;
+	else
+		house = pHousesInFOV->front();
+	
 	AgentInfo agent = pInterface->Agent_GetInfo();
-	if (!agent.IsInHouse)
-	{
-		pBlackboard->ChangeData("ExitPos", agent.Position);
-		pBlackboard->ChangeData("HouseCenterReached", false);
-		cout << "Seek exit" << endl;
-	}
+	//don't mind houses that the agent already visited
+	if (pInterface->SearchedHouseBefore(house.Center))
+		return false;
+	else
+		pBlackboard->ChangeData("SearchBuilding", true);
+	// agent will only do this when he is outside of a house
+	pBlackboard->ChangeData("ExitPos", agent.Position);
+	pBlackboard->ChangeData("HouseCenterReached", false);
+		//cout << "Seek exit" << endl;
 
 	pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
 	pBlackboard->ChangeData("HouseInfo", house);
@@ -166,7 +204,14 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 	if (!agent.IsInHouse)
 		return false;
 	if (agent.Position.DistanceSquared(house.Center) < 0.5)
+	{
+		// Agent can go to exit
 		pBlackboard->ChangeData("HouseCenterReached", true);
+		// push in house memory
+		pInterface->UpdateHouseMemory(house.Center);
+		//Stop search
+		pBlackboard->ChangeData("SearchBuilding", false);
+	}
 	if (reached)
 		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(exit));
 	else
@@ -184,21 +229,14 @@ bool AgentInHouse(Elite::Blackboard* pBlackboard)
 bool IsBitten(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
-	ExamInterfaceWrapper* pInterface = nullptr;
-	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
-	if (!pInterface)
+	bool* pAgentRage = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pAgentRage", pAgentRage);
+	if (!pAgentRage)
 		return false;
 
-	AgentInfo agentInfo = pInterface->Agent_GetInfo();
-	if(agentInfo.WasBitten)
-		return true;
-
-	return false;
+	return *pAgentRage;
 }
-/// Check if agent is safe 
-/// 
-/// An agent is concidered safe when the kill countdown is high enough, it was not bitten,
-/// it has a gun and is inside of a house.
+
 bool IsSafe(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
@@ -213,6 +251,58 @@ bool IsSafe(Elite::Blackboard* pBlackboard)
 		return true;
 
 	return false;
+}
+
+
+bool NeedHeal(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+	if (!pInterface)
+		return false;
+
+	if (pInterface->Agent_HasMedKit())
+	{
+		AgentInfo agent = pInterface->Agent_GetInfo();
+		int heal = pInterface->GetItemStats(eItemType::MEDKIT);
+		if ((10 - agent.Health) > heal)
+			return true;
+	}
+	return false;
+}
+bool NeedFood(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+	if (!pInterface)
+		return false;
+
+	if (pInterface->Agent_HasFood())
+	{
+		AgentInfo agent = pInterface->Agent_GetInfo();
+		int boost = pInterface->GetItemStats(eItemType::FOOD);
+		if ((10 - agent.Energy) > boost)
+			return true;
+	}
+	return false;
+}
+bool OutOfBounds(Elite::Blackboard* pBlackboard)
+{
+	//Get data from blackboard
+	ExamInterfaceWrapper* pInterface = nullptr;
+	bool* pReturning = false;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pReturning", pReturning);
+	if ((!pInterface)&&(!pReturning))
+		return false;
+	
+	if (!*pReturning)
+		return false;
+	cout << "Returning" << endl;
+	pBlackboard->ChangeData("TargetPos", pInterface->World_GetInfo().Center);
+	return true;
 }
 bool HasGun(Elite::Blackboard* pBlackboard)
 {
@@ -231,10 +321,11 @@ bool EnemyAligned(Elite::Blackboard* pBlackboard)
 	ExamInterfaceWrapper* pInterface = nullptr;
 	std::vector<EntityInfo> avoidVec{};
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
-		pBlackboard->GetData("AvoidVec", avoidVec);
+		pBlackboard->GetData("AvoidVec", avoidVec) ;
 
 	if ((!pInterface)||(avoidVec.size() == 0))
 		return false;
+
 
 	float closestDist = FLT_MAX;
 	EntityInfo closestEnemy{};
@@ -256,10 +347,8 @@ bool EnemyAligned(Elite::Blackboard* pBlackboard)
 	// Get agent orientation
 	float oriRad = float(agent.Orientation - (double)b2_pi * 0.5);
 	Elite::Vector2 orientation = { cos(oriRad), sin(float(oriRad)) };
-	if (Dot(orientation.GetNormalized(), dir.GetNormalized()) >= 0.998)
-		return true;
 
-	return false;
+	return (Dot(orientation.GetNormalized(), dir.GetNormalized()) >= 0.998);
 }
 //-----------------------------------------------------------------
 // Behavior States
@@ -268,27 +357,32 @@ bool EnemyAligned(Elite::Blackboard* pBlackboard)
 
 BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 {
+	ExamInterfaceWrapper* pInterface = nullptr;
 	AgentSteering* pSteering = nullptr;
-	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering);
+	float wanderAngle{};
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) && 
+		pBlackboard->GetData("pAgentSteering", pSteering)&&
+		pBlackboard->GetData("WanderAngle", wanderAngle);
 
 	if ((!pSteering))
 		return Failure;
 
-	pSteering->SetToWander();
-	cout << "ChangToWander" << endl;
-	return Success;
-}
+	//Calculate a wander point
+	float offset = 8.f; //Offset (Agent Direction)
+	float radius = 4.f; //WanderRadius
+	float angleChange = ToRadians(45); //Max Wander Angle change per frame
+	AgentInfo agentInfo = pInterface->Agent_GetInfo();
 
-BehaviorState ChangeToPanic(Elite::Blackboard* pBlackboard)
-{
-	AgentSteering* pSteering = nullptr;
-	auto dataAvailable = pBlackboard->GetData("pAgentSteering", pSteering);
-
-	if ((!pSteering))
-		return Failure;
-
-	pSteering->SetToWander();
-	cout << "ChangToWander" << endl;
+	float random = ((float)rand()) / (float)RAND_MAX;
+	wanderAngle = (wanderAngle - angleChange / 2) + (random * angleChange);
+	pBlackboard->ChangeData("WanderAngle", wanderAngle);
+	Elite::Vector2 origin = agentInfo.Position + agentInfo.LinearVelocity.GetNormalized() * offset;
+	Elite::Vector2 wanderPoint = Elite::Vector2(origin.x + radius * cos(wanderAngle), origin.y + angleChange * sin(wanderAngle));
+	// Use getClosestPathPoint to avoid running into walls
+	pInterface->Draw_Point(wanderPoint, 3.f, { 1,0,0 });
+	
+	pSteering->SetToSeek(pInterface->NavMesh_GetClosestPathPoint(wanderPoint));
+	cout << "Wander" << endl;
 	return Success;
 }
 
@@ -302,7 +396,7 @@ BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 	if (!pSteering)
 		return Failure;
 
-	cout << "ChangToSeek" << endl;
+	cout << "Seek" << endl;
 	pSteering->SetToSeek(TargetPos);
 
 	return Success;
@@ -334,7 +428,7 @@ BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 		return Failure;
 
 	pSteering->SetToFlee(TargetPos);
-	cout << "ChangToFlee" << endl;
+	cout << "Flee" << endl;
 	return Success;
 }
 
@@ -362,17 +456,17 @@ BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
 		vec = (enemy.Location - agentInfo.Position).GetNormalized();
 		// closer targets have more influence on the turn direction 
 		// *10 is to avoid too small numbers dur to the inversional proportionality
-		direction += (linearVel - vec) * agentInfo.MaxAngularSpeed * 10 / distSqrd;
+		direction += (linearVel - vec) * agentInfo.MaxAngularSpeed * 30 / distSqrd;
 	}
 	float oriRad = float(agentInfo.Orientation - (double)b2_pi * 0.5);
 	Elite::Vector2 orientation = { cos(oriRad), sin(float(oriRad)) };
 
 	linearVel = direction + orientation; //Desired Velocity
 	linearVel.Normalize(); // get unit vector
-	Elite::Vector2 target =pInterface->NavMesh_GetClosestPathPoint(linearVel + agentInfo.Position);
-	pInterface->Draw_Point(target, 10.f, { 1,0,0 });
+	Elite::Vector2 target =pInterface->NavMesh_GetClosestPathPoint(linearVel*8.f + agentInfo.Position);
+	pInterface->Draw_Point(target, 3.f, { 1,0,0 });
 	pSteering->SetToSeek(target);
-	cout << "ChangToAvoid" << endl;
+	cout << "Avoid" << endl;
 	return Success;
 }
 BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
@@ -389,7 +483,7 @@ BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
 	pSteering->SetToFace(targetPos);
-	cout << "ChangeToFace" << endl;
+	cout << "Face" << endl;
 	return Success;
 }
 
@@ -408,7 +502,48 @@ BehaviorState ChangeToShoot(Elite::Blackboard* pBlackboard)
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
 	pInterface->UseItem(eItemType::PISTOL);
 	pSteering->SetToFace(targetPos);
-	cout << "ChangeToShoot" << endl;
+	cout << "Shoot" << endl;
+	return Success;
+}
+
+BehaviorState ChangeToRotate(Elite::Blackboard* pBlackboard)
+{
+	AgentSteering* pSteering = nullptr;
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
+		pBlackboard->GetData("pAgentSteering", pSteering);
+
+	if ((!pSteering) || (!pInterface))
+		return Failure;
+
+	pSteering->SetToRotate();
+	cout << "Rotate" << endl;
+	return Success;
+}
+BehaviorState ChangeToHeal(Elite::Blackboard* pBlackboard)
+{
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+
+	if (!pInterface)
+		return Failure;
+
+	if (!pInterface->UseItem(eItemType::MEDKIT))
+		return Failure;
+
+	return Success;
+}
+BehaviorState ChangeToEat(Elite::Blackboard* pBlackboard)
+{
+	ExamInterfaceWrapper* pInterface = nullptr;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+
+	if (!pInterface)
+		return Failure;
+
+	if (!pInterface->UseItem(eItemType::FOOD))
+		return Failure;
+
 	return Success;
 }
 #endif

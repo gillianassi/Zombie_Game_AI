@@ -79,20 +79,24 @@ public:
 	//			Wraped Functions
 	/////////////////////////////////////
 	virtual bool Agent_HasGun() { return (m_pistols>0); };
-	virtual bool Agent_HasMedKit() { return  (m_food > 0); };
-	virtual bool Agent_HasFood() { return  (m_medKits > 0); };
+	virtual bool Agent_HasMedKit() { return  (m_medKits > 0); };
+	virtual bool Agent_HasFood() { return  (m_food > 0); };
 
 	virtual void Quick_AddItem(EntityInfo i);
-	virtual bool ExesSlots();
+	virtual void UpdateHouseMemory(Elite::Vector2 pos);
+	virtual bool SearchedHouseBefore(Elite::Vector2 pos);
+	virtual int GetItemStats(eItemType type);
+	virtual bool ExcessSlots();
 	virtual int SearchSlotWithItem(eItemType type);
 	virtual int SearchEmptyItemSlot();
 	virtual bool CanGrab(ItemInfo i);
-	virtual void UseItem(eItemType type);
+	virtual bool UseItem(eItemType type);
 
 protected:
 	IExamInterface* m_pInterface = nullptr;
 	// use Random_drop as an empty space inside the item vec
 	std::vector<eItemType> m_ItemVec = std::vector<eItemType>(5,eItemType::RANDOM_DROP);
+	std::deque<Elite::Vector2> m_HouseMemory;
 	int m_CurrentSlot = 0;
 	int m_pistols = 0, m_food = 0, m_medKits = 0;
 };

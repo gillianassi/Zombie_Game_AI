@@ -24,7 +24,7 @@ public:
 	virtual SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) = 0;
 
 	//Seek Functions
-	void SetTarget(Elite::Vector2 target) { m_pTarget = target; }
+	void SetTarget(Elite::Vector2 target) { m_Target = target; }
 
 
 	template<class T, typename std::enable_if<std::is_base_of<ISteeringBehavior, T>::value>::type* = nullptr>
@@ -32,7 +32,7 @@ public:
 	{ return static_cast<T*>(this); }
 
 protected:
-	Elite::Vector2 m_pTarget{};
+	Elite::Vector2 m_Target{};
 };
 #pragma endregion
 
@@ -99,42 +99,17 @@ public:
 
 
 };
-
 ///////////////////////////////////////
-//PURSUIT
+//Rotate
 //****
-class Pursuit : public ISteeringBehavior
+class Rotate : public ISteeringBehavior
 {
 public:
-	Pursuit() = default;
-	virtual ~Pursuit() = default;
-
-	//Pursuit Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-
-protected:
-	Elite::Vector2 m_Predict;
-	float m_PredictionScale = 1.5f;
-};
-
-///////////////////////////////////////
-//EVADE
-//****
-class Evade : public ISteeringBehavior
-{
-public:
-	Evade() = default;
-	virtual ~Evade() = default;
+	Rotate() = default;
+	virtual ~Rotate() = default;
 
 	//Evade Behaviour
 	SteeringPlugin_Output CalculateSteering(float deltaT, AgentInfo agentInfo) override;
-
-	void SetEvasionRadius(float evasionRadius) { m_EvasionRadius = evasionRadius; }
-
-protected:
-	Elite::Vector2 m_Predict;
-	float m_PredictionScale = 1.f;
-	float m_VelocityLength{};
 
 private:
 	float m_EvasionRadius = 15.f;
@@ -153,9 +128,9 @@ public:
 	void SetDecisionMaking(Elite::IDecisionMaking* decisionMakingStructure) { m_DecisionMaking = decisionMakingStructure; }
 	SteeringPlugin_Output GetAgentSteering() { return m_Agentsteering; }
 	void SetToWander();
+	void SetToRotate();
 	void SetToSeek(Elite::Vector2 targetPos);
 	void SetToFlee(Elite::Vector2 targetPos);
-	void SetToAvoid(Elite::Vector2 TargetPos);
 	void SetToFace(Elite::Vector2 targetPos);
 
 protected:
@@ -166,6 +141,7 @@ protected:
 	Seek* m_pSeek = nullptr;
 	Flee* m_pFlee = nullptr;
 	Face* m_pFace = nullptr;
+	Rotate* m_pRotate = nullptr;
 };
 #endif
 

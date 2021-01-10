@@ -32,22 +32,43 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pAgentsteering = new AgentSteering();
 	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
 	Blackboard* pB = CreateBlackboard(m_pAgentsteering);
-	BehaviorTree* pBT = new BehaviorTree(pB, 
-		new BehaviorSelector({
+	BehaviorTree* pBT = new BehaviorTree(pB,
+		new BehaviorSelector
+		({
 			new BehaviorSequence(
 				{
-					new BehaviorConditional(EnemyInSight),
+					new BehaviorConditional(NeedFood),
+					new BehaviorAction(ChangeToEat)
+				}),
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(NeedHeal),
+					new BehaviorAction(ChangeToHeal)
+				}),
+			new BehaviorSequence(
+				{
 					new BehaviorConditional(HasGun),
 					new BehaviorSelector(
 					{
 						new BehaviorSequence(
 						{
-							new BehaviorConditional(EnemyAligned),
-							new BehaviorAction(ChangeToShoot)
+							new BehaviorConditional(EnemyInSight),
+							new BehaviorSelector(
+							{
+								new BehaviorSequence(
+								{
+									new BehaviorConditional(EnemyAligned),
+									new BehaviorAction(ChangeToShoot)
+								}),
+								new BehaviorAction(ChangeToFace)
+							})
 						}),
-						new BehaviorAction(ChangeToFace)
+						new BehaviorSequence(
+						{
+							new BehaviorConditional(IsBitten),
+							new BehaviorAction(ChangeToRotate)
+						})
 					})
-					
 				}),
 			new BehaviorSequence(
 				{
@@ -69,8 +90,18 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					new BehaviorConditional(EnemyInSight),
 					new BehaviorAction(ChangeToAvoid)
 				}),
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(PurgeZoneInSight),
+					new BehaviorAction(ChangeToSeek)
+				}),
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(OutOfBounds),
+					new BehaviorAction(ChangeToSeek)
+				}),
 			new BehaviorAction(ChangeToWander)
-			})
+		})
 	);
 	m_pAgentsteering->SetDecisionMaking(pBT);
 }
@@ -148,7 +179,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	auto steering = SteeringPlugin_Output();
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterfaceWrapper->Agent_GetInfo();
-
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 	m_HousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
@@ -162,41 +192,32 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		}
 	}
 
-	//INVENTORY USAGE DEMO
-	//********************
-	if (m_UseItem)
-	{
-		//Use an item (make sure there is an item at the given inventory slot)
-		m_pInterfaceWrapper->Inventory_UseItem(0);
-	}
-
-	if (m_RemoveItem)
-	{
-		//Remove an item from a inventory slot
-		m_pInterfaceWrapper->Inventory_RemoveItem(0);
-	}
-	
-	
 	// Handle steeirng
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
 	steering = m_pAgentsteering->GetAgentSteering();
 
-	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	//steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
-	if (agentInfo.WasBitten)
+	m_TimeNow = std::chrono::system_clock::now();
+	if (!agentInfo.Bitten)
 	{
-		m_CanRun = true;
-		m_Runtimer = 2.f;
+		float elapsedBiteTime = float(std::chrono::duration_cast<std::chrono::seconds>(m_TimeNow - m_lastBitten).count());
+		m_CanRun = (elapsedBiteTime < 1.5f);
+		m_AgentRage = (elapsedBiteTime < 2.f);
 	}
-	else if (m_Runtimer > 0)
-		m_Runtimer -= dt;
 	else
-		m_CanRun = false;
-	// timer before agent enters a new house
-	if (agentInfo.IsInHouse)
-		m_Housetimer = 4.f;
-	else if (m_Housetimer > 0)
-		m_Housetimer -= dt;
+		m_lastBitten = std::chrono::system_clock::now();
+	// check if agent is out of bounds
+	if (DistanceSquared(m_pInterfaceWrapper->Agent_GetInfo().Position, m_pInterfaceWrapper->World_GetInfo().Center) > 
+		Square(m_pInterfaceWrapper->World_GetInfo().Dimensions.x - 75) || m_Returning)
+	{
+		float elapsedReturnTime = float(std::chrono::duration_cast<std::chrono::seconds>(m_TimeNow - m_LastOutOfBounds).count());
+		m_Returning = (elapsedReturnTime < 3.f);
+	}
+	else 
+		m_LastOutOfBounds = std::chrono::system_clock::now();
+
+	m_pInterfaceWrapper->Draw_Circle(m_pInterfaceWrapper->World_GetInfo().Center,
+		m_pInterfaceWrapper->World_GetInfo().Dimensions.x -75, { 1,0,0 });
+
 	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
 								 //SteeringPlugin_Output is works the exact same way a SteeringBehaviour output
@@ -213,7 +234,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
-	m_pInterfaceWrapper->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+	//m_pInterfaceWrapper->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const
@@ -266,9 +287,12 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("ExitPos", Elite::Vector2{});
 	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});
 	pBlackboard->AddData("HouseInfo", HouseInfo{});
-	pBlackboard->AddData("RunTimer", 0.0f);
-	pBlackboard->AddData("HouseTimer", &m_Housetimer);
+	pBlackboard->AddData("pAgentRage", &m_AgentRage);
+	pBlackboard->AddData("pTimeNow",	&m_TimeNow);
+	pBlackboard->AddData("WanderAngle", 1.7f);
 	pBlackboard->AddData("Running", false);
+	pBlackboard->AddData("SearchBuilding", false);
+	pBlackboard->AddData("pReturning", &m_Returning);
 	pBlackboard->AddData("HouseCenterReached", false);
 	//pBlackboard->AddData("DebugRender", false);
 

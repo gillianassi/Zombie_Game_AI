@@ -12,35 +12,63 @@ void ExamInterfaceWrapper::Quick_AddItem(EntityInfo i)
 	ItemInfo item{};
 	Item_Grab(i, item);
 	int slot = SearchEmptyItemSlot();
-	Inventory_AddItem(slot, item);
-	m_ItemVec[slot] = item.Type;
-	if (item.Type == eItemType::PISTOL)
+	if (slot == -1)
+		cout << "No Free Inventory Slots" << endl;
+	else 
 	{
-		m_pistols++;
+		Inventory_AddItem(slot, item);
+		m_ItemVec[slot] = item.Type;
+		if (item.Type == eItemType::PISTOL)
+		{
+			m_pistols++;
+		}
+		else if (item.Type == eItemType::MEDKIT)
+		{
+			m_medKits++;
+		}
+		else if (item.Type == eItemType::FOOD)
+		{
+			m_food++;
+		}
+		m_ItemVec[slot] = item.Type;
 	}
-	else if (item.Type == eItemType::MEDKIT)
-	{
-		m_medKits++;
-	}
-	else if (item.Type == eItemType::FOOD)
-	{
-		m_food++;
-	}
-	m_ItemVec[slot] = item.Type;
-
 }
 
-bool ExamInterfaceWrapper::ExesSlots()
+void ExamInterfaceWrapper::UpdateHouseMemory(Elite::Vector2 pos)
+{
+	m_HouseMemory.push_back(pos);
+	if (m_HouseMemory.size() > 3)
+		m_HouseMemory.pop_front();
+}
+
+bool ExamInterfaceWrapper::SearchedHouseBefore(Elite::Vector2 pos)
+{
+	return (std::find(m_HouseMemory.begin(), m_HouseMemory.end(), pos) != m_HouseMemory.end());
+}
+
+int ExamInterfaceWrapper::GetItemStats(eItemType type)
+{
+	int data = 0;
+	ItemInfo item;
+	Inventory_GetItem(SearchSlotWithItem(type), item);
+	if (type == eItemType::PISTOL)
+		data = Weapon_GetAmmo(item);
+	else if (type == eItemType::MEDKIT)
+		data = Medkit_GetHealth(item);
+	else
+		data = Food_GetEnergy(item);
+
+	return data;
+}
+
+bool ExamInterfaceWrapper::ExcessSlots()
 {
 	// check all spots 1 by 1 and reserve a spot for each
 	int exes = 5;
-	if (Agent_HasGun())
-		exes -= max(1,m_pistols);
-
-	if (Agent_HasFood())
-		exes -= max(1, m_medKits);
-	if (Agent_HasMedKit())
-		exes -= max(1, m_food);
+	
+	exes -= max(1,m_pistols);
+	exes -= max(1, m_medKits);
+	exes -= max(1, m_food);
 
 	// return true of there are exes slots
 	return exes > 0;
@@ -79,15 +107,15 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	switch (i.Type)
 	{
 	case eItemType::PISTOL:
-		return(!Agent_HasGun() || ExesSlots());
+		return(!Agent_HasGun() || ExcessSlots());
 		break;
 
 	case eItemType::MEDKIT:
-		return (!Agent_HasMedKit() || ExesSlots());
+		return (!Agent_HasMedKit() || ExcessSlots());
 		break;
 
 	case eItemType::FOOD:
-		return (!Agent_HasFood() || ExesSlots());
+		return (!Agent_HasFood() || ExcessSlots());
 		break;
 
 	default:
@@ -97,14 +125,14 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	return false;
 }
 
-void ExamInterfaceWrapper::UseItem(eItemType type)
+bool ExamInterfaceWrapper::UseItem(eItemType type)
 {
 	int slot = SearchSlotWithItem(type);
 	if (slot == -1) {
 		cout << "Warning! :: Item not in Inventory" << endl;
-		return;
+		return false;
 	}
-	Inventory_UseItem(slot);
+	bool success = Inventory_UseItem(slot);
 	ItemInfo item{};
 	Inventory_GetItem(slot, item);
 	// delete if it is not a gun, if it is a gun, delete if ammo reaches 0
@@ -131,5 +159,5 @@ void ExamInterfaceWrapper::UseItem(eItemType type)
 	default:
 		break;
 	}
-
+	return success;
 }
