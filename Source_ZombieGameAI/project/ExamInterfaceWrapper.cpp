@@ -61,11 +61,11 @@ int ExamInterfaceWrapper::SearchEmptyItemSlot()
 
 }
 
-int ExamInterfaceWrapper::SearchSlotWithItem(ItemInfo i)
+int ExamInterfaceWrapper::SearchSlotWithItem(eItemType type)
 {
-	auto itemIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&i](ItemInfo info)
+	auto itemIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&type](ItemInfo info)
 		{
-			return info.Type == i.Type;
+			return info.Type == type;
 		});
 	if (itemIT != m_ItemVec.end())
 	{
@@ -80,24 +80,15 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	switch (i.Type)
 	{
 	case eItemType::PISTOL:
-		if (!m_hasGun)
-			return true;
-		if (ExesSlots())
-			return true;
+		return(!m_hasGun || ExesSlots());
 		break;
 
 	case eItemType::FOOD:
-		if (!m_hasFood)
-			return true;
-		if (ExesSlots())
-			return true;
+		return (!m_hasFood || ExesSlots());
 		break;
 
 	case eItemType::MEDKIT:
-		if (!m_hasMedKit)
-			return true;
-		if (ExesSlots())
-			return true;
+		return (!m_hasMedKit || ExesSlots());
 		break;
 
 	default:
@@ -107,7 +98,15 @@ bool ExamInterfaceWrapper::CanGrab(ItemInfo i)
 	return false;
 }
 
-bool ExamInterfaceWrapper::Shoot()
+void ExamInterfaceWrapper::Shoot()
 {
-	return false;
+	if (!m_hasGun)
+		cout << "No Gun" << endl;
+	else
+	{
+		int slot = SearchSlotWithItem(eItemType::PISTOL);
+		Inventory_UseItem(slot);
+		Inventory_GetItem
+	}
+
 }

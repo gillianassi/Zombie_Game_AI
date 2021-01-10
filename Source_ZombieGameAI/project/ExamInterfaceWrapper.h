@@ -85,10 +85,10 @@ public:
 	virtual void Quick_AddItem(EntityInfo i);
 	virtual void Quick_DropItem(int itemSlot);
 	virtual bool ExesSlots();
-	virtual int SearchSlotWithItem(ItemInfo i);
+	virtual int SearchSlotWithItem(eItemType type);
 	virtual int SearchEmptyItemSlot();
 	virtual bool CanGrab(ItemInfo i);
-	virtual bool Shoot();
+	virtual void Shoot();
 
 protected:
 	IExamInterface* m_pInterface = nullptr;
