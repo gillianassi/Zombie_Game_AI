@@ -106,7 +106,6 @@ void ExamInterfaceWrapper::Shoot()
 	{
 		int slot = SearchSlotWithItem(eItemType::PISTOL);
 		Inventory_UseItem(slot);
-		Inventory_GetItem
 	}
 
 }
