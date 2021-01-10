@@ -52,7 +52,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 			new BehaviorSequence(
 				{
 					new BehaviorConditional(EnemyInSight),
-					new BehaviorAction(ChangeToAvoid)
+					new BehaviorAction(ChangeToFace)
 				}),
 			new BehaviorAction(ChangeToWander)
 			})
@@ -166,7 +166,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
 	steering = m_pAgentsteering->GetAgentSteering();
 
-	steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
+	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
 	//steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
 	if (agentInfo.WasBitten)
 	{

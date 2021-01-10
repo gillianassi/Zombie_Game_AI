@@ -234,7 +234,7 @@ BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	if ((!pSteering))
 		return Failure;
 
-	pSteering->SetToWander();
+	//pSteering->SetToWander();
 	cout << "ChangToWander" << endl;
 	return Success;
 }
@@ -344,23 +344,24 @@ BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 		pBlackboard->GetData("pAgentSteering", pSteering) &&
 		pBlackboard->GetData("AvoidVec", avoidVec);
 
-	if (!pSteering)
+	if ((!pSteering) || (!pInterface))
 		return Failure;
-	float distSqrd = FLT_MAX;
+	float closestDist = FLT_MAX;
 	EntityInfo closestEnemy{};
 	AgentInfo agentInfo = pInterface->Agent_GetInfo();
 	Elite::Vector2 pos = agentInfo.Position;
 	for (auto& enemy : avoidVec)
 	{
-		if (distSqrd < Elite::DistanceSquared(enemy.Location, pos))
+		if (Elite::DistanceSquared(enemy.Location, pos) < closestDist)
 		{
 			closestEnemy = enemy;
-			distSqrd = Elite::DistanceSquared(enemy.Location, pos);
+			closestDist = Elite::DistanceSquared(enemy.Location, pos);
 		}
 	}
 	// Just enemy location, not closest path, Could cause agent to incorrectly face if the agent is next to a corner
+	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
 	pSteering->SetToFace(closestEnemy.Location);
-	cout << "ChangToAvoid" << endl;
+	cout << "ChangToFace" << endl;
 	return Success;
 }
 #endif
