@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ExamInterfaceWrapper.h"
 
-bool ExamInterfaceWrapper::Inventory_RemoveItem(UINT slotId)
+bool ExamInterfaceWrapper::Quick_RemoveItem(UINT slotId)
 {
 	m_ItemVec[slotId] = eItemType::RANDOM_DROP;
 	return m_pInterface->Inventory_RemoveItem(slotId);
@@ -121,31 +121,33 @@ bool ExamInterfaceWrapper::UseItem(eItemType type)
 		return false;
 	}
 	bool success = Inventory_UseItem(slot);
-	ItemInfo item{};
-	Inventory_GetItem(slot, item);
-	// delete if it is not a gun, if it is a gun, delete if ammo reaches 0
-	switch (type)
-	{
-	case eItemType::PISTOL:
-		if (Weapon_GetAmmo(item) == 0)
+	if(!success)
+		m_ItemVec[slot] = eItemType::RANDOM_DROP;
+	else {
+		ItemInfo item{};
+		Inventory_GetItem(slot, item);
+		// delete if it is not a gun, if it is a gun, delete if ammo reaches 0
+		switch (type)
 		{
-			Inventory_RemoveItem(slot);
-			m_pistols--;
+		case eItemType::PISTOL:
+			if (Weapon_GetAmmo(item) == 0)
+			{
+				Quick_RemoveItem(slot);
+				m_pistols--;
+			}
+			break;
+		case eItemType::MEDKIT:
+			Quick_RemoveItem(slot);
+			m_medKits--;
+			break;
+		case eItemType::FOOD:
+			Quick_RemoveItem(slot);
+			m_food--;
+			break;
+
+		default:
+			break;
 		}
-		break;
-
-	case eItemType::FOOD:
-		Inventory_RemoveItem(slot);
-		m_food--;
-		break;
-
-	case eItemType::MEDKIT:
-		Inventory_RemoveItem(slot);
-		m_medKits--;
-		break;
-
-	default:
-		break;
 	}
 	return success;
 }
@@ -153,15 +155,31 @@ bool ExamInterfaceWrapper::UseItem(eItemType type)
 void ExamInterfaceWrapper::AddItemToMemory(ItemInfo item)
 {
 	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [item](ItemRecord i)
-		{return ((i.Location == item.Location) && (i.Type == item.Type)); });
+		{return ((i.Location == item.Location)); });
 	if (ItemIt == m_ItemMemory.end())
 	{
 		ItemRecord newItem{};
 		newItem.Location = item.Location;
 		newItem.Type = item.Type;
 		m_ItemMemory.emplace_back(newItem);
+
+		switch (item.Type)
+		{
+		case eItemType::PISTOL:
+			m_RememberPistol = true;
+			break;
+
+		case eItemType::MEDKIT:
+			m_RememberMedKit = true;
+			break;
+		case eItemType::FOOD:
+			m_RememberFood = true;
+			break;
+
+		default:
+			break;
+		}
 	}
-		
 }
 
 
@@ -186,13 +204,37 @@ bool ExamInterfaceWrapper::IsItemInMemory(eItemType type)
 	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [type](ItemRecord item) {return (item.Type == type); });
 	return (ItemIt != m_ItemMemory.end());
 }
-
-void ExamInterfaceWrapper::DeleteItemFromMemory(ItemInfo item)
+bool ExamInterfaceWrapper::IsItemInMemory(Elite::Vector2 itemPos)
 {
-	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [item](ItemRecord i)
-		{return ((i.Location == item.Location) && (i.Type == item.Type)); });
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [itemPos](ItemRecord item) {return (item.Location == itemPos); });
+	return (ItemIt != m_ItemMemory.end());
+}
+
+void ExamInterfaceWrapper::DeleteItemFromMemory(Elite::Vector2 itemPos)
+{
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [itemPos](ItemRecord i)
+		{return (i.Location == itemPos); });
 	if (ItemIt != m_ItemMemory.end())
+	{
+		eItemType type = ItemIt->Type;
 		m_ItemMemory.erase(std::remove(m_ItemMemory.begin(), m_ItemMemory.end(), *ItemIt)); // erase-remove idiom
+
+		switch (type)
+		{
+		case eItemType::PISTOL:
+			m_RememberPistol = IsItemInMemory(type);
+			break;
+
+		case eItemType::MEDKIT:
+			m_RememberMedKit = IsItemInMemory(type);
+			break;
+		case eItemType::FOOD:
+			m_RememberFood = IsItemInMemory(type);
+			break;
+		default:
+			break;
+		}
+	}
 	else
 		cout << "delete failed" << endl;
 }

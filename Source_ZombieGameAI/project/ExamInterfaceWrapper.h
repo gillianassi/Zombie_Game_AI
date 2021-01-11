@@ -17,7 +17,7 @@ public:
 	virtual WorldInfo World_GetInfo() { return m_pInterface->World_GetInfo(); }
 	virtual StatisticsInfo World_GetStats() { return m_pInterface->World_GetStats(); }
 
-	virtual bool Fov_GetHouseByIndex(UINT index, HouseInfo& houseInfo) { return m_pInterface->Fov_GetHouseByIndex(index,houseInfo); }
+	virtual bool Fov_GetHouseByIndex(UINT index, HouseInfo& houseInfo) { return m_pInterface->Fov_GetHouseByIndex(index, houseInfo); }
 	virtual bool Fov_GetEntityByIndex(UINT index, EntityInfo& enemyInfo) { return m_pInterface->Fov_GetEntityByIndex(index, enemyInfo); }
 
 	virtual AgentInfo Agent_GetInfo() { return m_pInterface->Agent_GetInfo(); };
@@ -27,9 +27,9 @@ public:
 	virtual Elite::Vector2 NavMesh_GetClosestPathPoint(Elite::Vector2 goal) { return m_pInterface->NavMesh_GetClosestPathPoint(goal); }
 
 	//INVENTORY
-	virtual bool Inventory_AddItem(UINT slotId, ItemInfo item) { return m_pInterface->Inventory_AddItem(slotId,item); }
+	virtual bool Inventory_AddItem(UINT slotId, ItemInfo item) { return m_pInterface->Inventory_AddItem(slotId, item); }
 	virtual bool Inventory_UseItem(UINT slotId) { return m_pInterface->Inventory_UseItem(slotId); }
-	virtual bool Inventory_RemoveItem(UINT slotId);
+	virtual bool Inventory_RemoveItem(UINT slotId) { return m_pInterface->Inventory_RemoveItem(slotId); };
 	virtual bool Inventory_GetItem(UINT slotId, ItemInfo& item) { return m_pInterface->Inventory_GetItem(slotId, item); }
 	virtual UINT Inventory_GetCapacity() { return m_pInterface->Inventory_GetCapacity(); }
 
@@ -95,6 +95,7 @@ public:
 	virtual bool Agent_HasFood() { return  (m_food > 0); }
 
 	virtual void Quick_AddItem(EntityInfo i);
+	virtual bool Quick_RemoveItem(UINT slotId);
 	virtual int GetItemStats(eItemType type);
 	virtual bool ExcessSlots();
 	virtual int SearchSlotWithItem(eItemType type);
@@ -105,7 +106,11 @@ public:
 	virtual void AddItemToMemory(ItemInfo item);
 	virtual Elite::Vector2 FindClosestItemInMemory(eItemType type);
 	virtual bool IsItemInMemory(eItemType type);
-	virtual void DeleteItemFromMemory(ItemInfo item);
+	virtual bool IsItemInMemory(Elite::Vector2 itemPos);
+	virtual bool RememberPistol() { return m_RememberPistol; }
+	virtual bool RememberMedkit() { return m_RememberMedKit; }
+	virtual bool RememberFood() { return m_RememberFood; }
+	virtual void DeleteItemFromMemory(Elite::Vector2 itemPos);
 	virtual bool SearchedHouseBefore(Elite::Vector2 pos);
 	virtual void UpdateHouseMemory(Elite::Vector2 pos);
 
@@ -119,4 +124,5 @@ protected:
 	std::deque<Elite::Vector2> m_HouseMemory;
 	int m_CurrentSlot = 0;
 	int m_pistols = 0, m_food = 0, m_medKits = 0;
+	bool m_RememberPistol = false, m_RememberMedKit = false, m_RememberFood = false;
 };

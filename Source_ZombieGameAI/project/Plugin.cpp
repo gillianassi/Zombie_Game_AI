@@ -196,17 +196,15 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	// Handle Timers
 	m_TimeNow = std::chrono::system_clock::now();
-	if (!agentInfo.Bitten)
+	if ((!agentInfo.Bitten)||(agentInfo.Stamina < 4.f))
 	{
 		float elapsedBiteTime = float(std::chrono::duration_cast<std::chrono::seconds>(m_TimeNow - m_lastBitten).count());
 		// Run if you have enough stamina, or you are bitten
-		if (agentInfo.Stamina < 8.f)
+		if (agentInfo.Stamina < 7.f)
 			m_CanRun = false;
 		else if (agentInfo.Stamina == 10.f)
 			m_CanRun = true;
 		m_Run = ((elapsedBiteTime < 1.5f)||(m_CanRun));
-		std::cout << agentInfo.Stamina << endl;
-		std::cout << m_CanRun << endl;
 		m_AgentRage = (elapsedBiteTime < 2.f);
 	}
 	else
@@ -300,8 +298,9 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});
 	pBlackboard->AddData("HouseInfo", HouseInfo{});
 	pBlackboard->AddData("pAgentRage", &m_AgentRage);
-	pBlackboard->AddData("WanderAngle", 1.7f);
+	pBlackboard->AddData("WanderAngle", 3.f);
 	pBlackboard->AddData("InPurgeZone", false);
+	pBlackboard->AddData("PurgeZone", PurgeZoneInfo{});
 	pBlackboard->AddData("NeedItem", false);
 	pBlackboard->AddData("ItemNeededPos", Elite::Vector2{});
 	pBlackboard->AddData("ItemNeededType", eItemType{});

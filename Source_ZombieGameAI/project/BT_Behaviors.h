@@ -57,34 +57,35 @@ bool PurgeZoneInSight(Elite::Blackboard* pBlackboard)
 	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
 	bool* pFleePurge = nullptr;
+	PurgeZoneInfo purgeZoneInfo{};
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
 		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV) &&
-		pBlackboard->GetData("pFleePurge", pFleePurge);
+		pBlackboard->GetData("pFleePurge", pFleePurge) &&
+		pBlackboard->GetData("PurgeZone", purgeZoneInfo);
 	if ((!pInterface)||(!pEntitiesInFOV)||(!pFleePurge))
 		return false;
 	
 	// Check for enemies in FOV
-	if (pEntitiesInFOV->size() == 0)
+	if ((pEntitiesInFOV->size() == 0)&& (!*pFleePurge))
 		return false;
-	// keep fleeing until timer is down
-	if (*pFleePurge == true)
-		return true;
-
 	for (auto& entity : *pEntitiesInFOV)
 	{
 		if (entity.Type == eEntityType::PURGEZONE)
 		{
-			PurgeZoneInfo purgeZoneInfo{};
 			pInterface->PurgeZone_GetInfo(entity, purgeZoneInfo);
-			Elite::Vector2 dir = -(purgeZoneInfo.Center - pInterface->Agent_GetInfo().Position);
-			Elite::Vector2 targetPos = dir.GetNormalized()*(purgeZoneInfo.Radius+5) + pInterface->Agent_GetInfo().Position;
-			pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(targetPos), 3.f, { 1,0,0 });
-			pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(targetPos));
 			pBlackboard->ChangeData("InPurgeZone", true);
-			return true;
+			*pFleePurge = true;
 		}
 	}
-	pBlackboard->ChangeData("InPurgeZone", false);
+	if (*pFleePurge == true)
+	{
+		Elite::Vector2 dir = -(purgeZoneInfo.Center - pInterface->Agent_GetInfo().Position);
+		Elite::Vector2 targetPos = dir.GetNormalized() * (purgeZoneInfo.Radius + 5) + pInterface->Agent_GetInfo().Position;
+		pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(targetPos), 3.f, { 1,0,0 });
+		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(targetPos));
+		pBlackboard->ChangeData("InPurgeZone", false);
+		return true;
+	}
 	return false;
 }
 
@@ -97,12 +98,8 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 	//Get data from blackboard
 	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
-	Elite::Vector2 itemNeededPos{};
-	eItemType itemNeededType{};
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
-		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV)&&
-		pBlackboard->GetData("ItemNeededPos", itemNeededPos)&&
-		pBlackboard->GetData("ItemNeededType", itemNeededType);
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
 	if ((!pInterface)||(!pEntitiesInFOV))
 		return false;
 	
@@ -123,10 +120,10 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 			{
 				if (agent.Position.DistanceSquared(entity.Location) < Square(agent.GrabRange))
 				{
-					if ((itemNeededPos == item.Location) && (itemNeededType == item.Type))
+					if (pInterface->IsItemInMemory(item.Location))
 					{
 						pBlackboard->ChangeData("NeedItem", false);
-						pInterface->DeleteItemFromMemory(item);
+						pInterface->DeleteItemFromMemory(item.Location);
 					}
 					pInterface->Quick_AddItem(entity);
 					std::cout << "Grabbed Item" << endl;
@@ -269,19 +266,19 @@ bool RememberNececity(Elite::Blackboard* pBlackboard)
 	Elite::Vector2 itemPos{};
 	eItemType type{};
 	if (!needItem) {
-		if (!pInterface->Agent_HasGun() && pInterface->IsItemInMemory(eItemType::PISTOL))
+		if (!pInterface->Agent_HasGun() && pInterface->RememberPistol())
 		{
 			itemPos = pInterface->FindClosestItemInMemory(eItemType::PISTOL);
 			type = eItemType::PISTOL;
 			needItem = true;
 		}
-		else if (!pInterface->Agent_HasMedKit() && pInterface->IsItemInMemory(eItemType::MEDKIT))
+		else if (!pInterface->Agent_HasMedKit() && pInterface->RememberMedkit())
 		{
 			itemPos = pInterface->FindClosestItemInMemory(eItemType::MEDKIT);
 			type = eItemType::MEDKIT;
 			needItem = true;
 		}
-		else if (!pInterface->Agent_HasFood() && pInterface->IsItemInMemory(eItemType::FOOD))
+		else if (!pInterface->Agent_HasFood() && pInterface->RememberFood())
 		{
 			itemPos = pInterface->FindClosestItemInMemory(eItemType::FOOD);
 			type = eItemType::FOOD;
@@ -301,9 +298,6 @@ bool RememberNececity(Elite::Blackboard* pBlackboard)
 	{
 		Elite::Vector2 itemNeededPos{};
 		auto dataAvailable = pBlackboard->GetData("ItemNeededPos", itemNeededPos);
-		//safety
-		if (pInterface->Agent_GetInfo().Position.DistanceSquared(itemNeededPos) < Square(pInterface->Agent_GetInfo().GrabRange))
-			pBlackboard->ChangeData("NeedItem", false);
 		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(itemNeededPos));
 	}
 	return needItem;
