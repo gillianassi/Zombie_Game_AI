@@ -90,8 +90,12 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 	//Get data from blackboard
 	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
+	Elite::Vector2 itemNeededPos{};
+	eItemType itemNeededType{};
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
-		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV)&&
+		pBlackboard->GetData("ItemNeededPos", itemNeededPos)&&
+		pBlackboard->GetData("ItemNeededType", itemNeededType);
 	if ((!pInterface)||(!pEntitiesInFOV))
 		return false;
 	
@@ -109,8 +113,14 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 		{
 			pInterface->Item_GetInfo(entity, item);
 			if (pInterface->CanGrab(item))
+			{
 				if (agent.Position.DistanceSquared(entity.Location) < Square(agent.GrabRange))
 				{
+					if ((itemNeededPos == item.Location) && (itemNeededType == item.Type))
+					{
+						pBlackboard->ChangeData("NeedItem", false);
+						pInterface->DeleteItemInMemory(item);
+					}
 					cout << "Grabbed Item" << endl;
 					pInterface->Quick_AddItem(entity);
 				}
@@ -119,7 +129,10 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 					closestEntity = entity;
 					success = true;
 				}
-				
+			}
+			else if (item.Type != eItemType::GARBAGE)
+				pInterface->AddItemToMemory(item);
+
 		}
 	}
 	if(success)
@@ -237,20 +250,49 @@ bool IsBitten(Elite::Blackboard* pBlackboard)
 	return *pAgentRage;
 }
 
-bool IsSafe(Elite::Blackboard* pBlackboard)
+bool RememberNececity(Elite::Blackboard* pBlackboard)
 {
 	//Get data from blackboard
 	ExamInterfaceWrapper* pInterface = nullptr;
-	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface);
+	bool needItem = false;
+	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface)&&
+		pBlackboard->GetData("NeedItem",needItem);
+
 	if (!pInterface)
 		return false;
-	StatisticsInfo stats = pInterface->World_GetStats();
-	AgentInfo agentInfo = pInterface->Agent_GetInfo();
-	cout << stats.KillCountdown << endl;
-	if (stats.KillCountdown > 60.f && !agentInfo.WasBitten && agentInfo.IsInHouse)
-		return true;
-
+	Elite::Vector2 itemPos{};
+	eItemType type{};
+	if (!needItem) {
+		if (!pInterface->Agent_HasGun() && pInterface->IsItemInMemory(eItemType::PISTOL))
+		{
+			itemPos = pInterface->FindClosestItemInMemory(eItemType::PISTOL);
+			type = eItemType::PISTOL;
+			needItem = true;
+		}
+		else if (!pInterface->Agent_HasMedKit() && pInterface->IsItemInMemory(eItemType::MEDKIT))
+		{
+			itemPos = pInterface->FindClosestItemInMemory(eItemType::MEDKIT);
+			type = eItemType::MEDKIT;
+			needItem = true;
+		}
+		else if (!pInterface->Agent_HasFood() && pInterface->IsItemInMemory(eItemType::FOOD))
+		{
+			itemPos = pInterface->FindClosestItemInMemory(eItemType::FOOD);
+			type = eItemType::FOOD;
+			needItem = true;
+		}
+		if (needItem)
+		{
+			std::cout << "Need Item!" << endl;
+			pBlackboard->ChangeData("NeedItem", true);
+			pBlackboard->ChangeData("ItemNeededPos", itemPos);
+			pBlackboard->ChangeData("ItemNeededType", itemPos);
+			pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(itemPos));
+			return true;
+		}
+	}
 	return false;
+
 }
 
 

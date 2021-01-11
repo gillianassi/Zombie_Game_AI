@@ -41,6 +41,52 @@ void ExamInterfaceWrapper::UpdateHouseMemory(Elite::Vector2 pos)
 		m_HouseMemory.pop_front();
 }
 
+void ExamInterfaceWrapper::AddItemToMemory(ItemInfo item)
+{
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [item](ItemRecord i)
+		{return ((i.Location == item.Location) && (i.Type == item.Type)); });
+	if (ItemIt == m_ItemMemory.end())
+	{
+		ItemRecord newItem{};
+		newItem.Location = item.Location;
+		newItem.Type = item.Type;
+		m_ItemMemory.emplace_back(newItem);
+	}
+		
+}
+
+
+Elite::Vector2 ExamInterfaceWrapper::FindClosestItemInMemory(eItemType type)
+{
+	float distSqrd = FLT_MAX;
+	ItemRecord closestItem{};
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [type](ItemRecord item) {return (item.Type == type); });
+	while (ItemIt != m_ItemMemory.end()) {
+		if (Elite::DistanceSquared(ItemIt->Location, Agent_GetInfo().Position) < distSqrd)
+		{
+			distSqrd = Elite::DistanceSquared(ItemIt->Location, Agent_GetInfo().Position);
+			closestItem = *ItemIt;
+		}
+		ItemIt = std::find_if(std::next(ItemIt), m_ItemMemory.end(), [type](ItemRecord item) {return (item.Type == type); });
+	}
+	return closestItem.Location;
+}
+
+bool ExamInterfaceWrapper::IsItemInMemory(eItemType type)
+{
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [type](ItemRecord item) {return (item.Type == type); });
+	return (ItemIt != m_ItemMemory.end());
+}
+
+void ExamInterfaceWrapper::DeleteItemInMemory(ItemInfo item)
+{
+	auto ItemIt = std::find_if(m_ItemMemory.begin(), m_ItemMemory.end(), [item](ItemRecord i)
+		{return ((i.Location == item.Location) && (i.Type == item.Type)); });
+	if (ItemIt != m_ItemMemory.end())
+		m_ItemMemory.erase(std::remove(m_ItemMemory.begin(), m_ItemMemory.end(), *ItemIt)); // erase-remove idiom
+
+}
+
 bool ExamInterfaceWrapper::SearchedHouseBefore(Elite::Vector2 pos)
 {
 	return (std::find(m_HouseMemory.begin(), m_HouseMemory.end(), pos) != m_HouseMemory.end());
@@ -76,13 +122,13 @@ bool ExamInterfaceWrapper::ExcessSlots()
 
 int ExamInterfaceWrapper::SearchEmptyItemSlot()
 {
-	auto slotIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(),[](eItemType slot)
+	auto slotIt = std::find_if(m_ItemVec.begin(), m_ItemVec.end(),[](eItemType slot)
 		{
 			return (slot == eItemType::RANDOM_DROP);
 		});
-	if (slotIT != m_ItemVec.end())
+	if (slotIt != m_ItemVec.end())
 	{
-		return  slotIT - m_ItemVec.begin();
+		return  slotIt - m_ItemVec.begin();
 	}
 	return -1;
 
@@ -90,13 +136,13 @@ int ExamInterfaceWrapper::SearchEmptyItemSlot()
 
 int ExamInterfaceWrapper::SearchSlotWithItem(eItemType type)
 {
-	auto itemIT = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&type](eItemType info)
+	auto itemIt = std::find_if(m_ItemVec.begin(), m_ItemVec.end(), [&type](eItemType info)
 		{
 			return info == type;
 		});
-	if (itemIT != m_ItemVec.end())
+	if (itemIt != m_ItemVec.end())
 	{
-		return  itemIT - m_ItemVec.begin();
+		return  itemIt - m_ItemVec.begin();
 	}
 	return -1;
 
@@ -142,17 +188,20 @@ bool ExamInterfaceWrapper::UseItem(eItemType type)
 		if (Weapon_GetAmmo(item) == 0)
 		{
 			Inventory_RemoveItem(slot);
+			m_ItemVec[slot] = eItemType::RANDOM_DROP;
 			m_pistols--;
 		}
 		break;
 
 	case eItemType::FOOD:
 		Inventory_RemoveItem(slot);
+		m_ItemVec[slot] = eItemType::RANDOM_DROP;
 		m_food--;
 		break;
 
 	case eItemType::MEDKIT:
 		Inventory_RemoveItem(slot);
+		m_ItemVec[slot] = eItemType::RANDOM_DROP;
 		m_medKits--;
 		break;
 

@@ -78,12 +78,28 @@ public:
 	/////////////////////////////////////
 	//			Wraped Functions
 	/////////////////////////////////////
+	struct ItemRecord
+	{
+		Elite::Vector2 Location{};
+		eItemType Type;
+
+		bool operator==(const ItemRecord& other) const
+		{
+			return Location == other.Location
+				&& Type == other.Type;
+		};
+	};
+
 	virtual bool Agent_HasGun() { return (m_pistols>0); };
 	virtual bool Agent_HasMedKit() { return  (m_medKits > 0); };
 	virtual bool Agent_HasFood() { return  (m_food > 0); };
 
 	virtual void Quick_AddItem(EntityInfo i);
 	virtual void UpdateHouseMemory(Elite::Vector2 pos);
+	virtual void AddItemToMemory(ItemInfo item);
+	virtual Elite::Vector2 FindClosestItemInMemory(eItemType type);
+	virtual bool IsItemInMemory(eItemType type);
+	virtual void DeleteItemInMemory(ItemInfo item);
 	virtual bool SearchedHouseBefore(Elite::Vector2 pos);
 	virtual int GetItemStats(eItemType type);
 	virtual bool ExcessSlots();
@@ -96,6 +112,7 @@ protected:
 	IExamInterface* m_pInterface = nullptr;
 	// use Random_drop as an empty space inside the item vec
 	std::vector<eItemType> m_ItemVec = std::vector<eItemType>(5,eItemType::RANDOM_DROP);
+	std::vector<ItemRecord> m_ItemMemory{};
 	std::deque<Elite::Vector2> m_HouseMemory;
 	int m_CurrentSlot = 0;
 	int m_pistols = 0, m_food = 0, m_medKits = 0;

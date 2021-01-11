@@ -77,7 +77,18 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				}),
 			new BehaviorSequence(
 				{
+					new BehaviorConditional(RememberNececity),
+					new BehaviorAction(ChangeToSeek)
+				}),
+			new BehaviorSequence(
+				{
 					new BehaviorConditional(AgentInHouse),
+					new BehaviorAction(ChangeToSeek)
+				}),
+
+			new BehaviorSequence(
+				{
+					new BehaviorConditional(PurgeZoneInSight),
 					new BehaviorAction(ChangeToSeek)
 				}),
 			new BehaviorSequence(
@@ -89,11 +100,6 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				{
 					new BehaviorConditional(EnemyInSight),
 					new BehaviorAction(ChangeToAvoid)
-				}),
-			new BehaviorSequence(
-				{
-					new BehaviorConditional(PurgeZoneInSight),
-					new BehaviorAction(ChangeToSeek)
 				}),
 			new BehaviorSequence(
 				{
@@ -289,8 +295,11 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("HouseInfo", HouseInfo{});
 	pBlackboard->AddData("pAgentRage", &m_AgentRage);
 	pBlackboard->AddData("pTimeNow",	&m_TimeNow);
-	pBlackboard->AddData("WanderAngle", 1.7f);
+	pBlackboard->AddData("WanderAngle", 3.f);
 	pBlackboard->AddData("Running", false);
+	pBlackboard->AddData("NeedItem", false);
+	pBlackboard->AddData("ItemNeededPos", Elite::Vector2{});
+	pBlackboard->AddData("ItemNeededType", eItemType{});
 	pBlackboard->AddData("SearchBuilding", false);
 	pBlackboard->AddData("pReturning", &m_Returning);
 	pBlackboard->AddData("HouseCenterReached", false);
