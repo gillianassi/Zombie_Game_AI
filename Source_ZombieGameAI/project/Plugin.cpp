@@ -12,6 +12,8 @@ Plugin::~Plugin()
 	SAFE_DELETE(m_pDecisionMaking);
 	SAFE_DELETE(m_pAgentsteering);
 	SAFE_DELETE(m_pInterface);
+	SAFE_DELETE(m_pInterfaceWrapper);
+	SAFE_DELETE(m_pBlackboard);
 }
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
@@ -31,8 +33,8 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	// Steering behaviour
 	m_pAgentsteering = new AgentSteering();
 	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-	Blackboard* pB = CreateBlackboard(m_pAgentsteering);
-	BehaviorTree* pBT = new BehaviorTree(pB,
+	m_pBlackboard = CreateBlackboard(m_pAgentsteering);
+	BehaviorTree* pBT = new BehaviorTree(m_pBlackboard,
 		new BehaviorSelector
 		({
 			new BehaviorSequence(
@@ -72,6 +74,11 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				}),
 			new BehaviorSequence(
 				{
+					new BehaviorConditional(PurgeZoneInSight),
+					new BehaviorAction(ChangeToSeek)
+				}),
+			new BehaviorSequence(
+				{
 					new BehaviorConditional(ItemInSight),
 					new BehaviorAction(ChangeToSeek)
 				}),
@@ -83,12 +90,6 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 			new BehaviorSequence(
 				{
 					new BehaviorConditional(AgentInHouse),
-					new BehaviorAction(ChangeToSeek)
-				}),
-
-			new BehaviorSequence(
-				{
-					new BehaviorConditional(PurgeZoneInSight),
 					new BehaviorAction(ChangeToSeek)
 				}),
 			new BehaviorSequence(
@@ -150,7 +151,7 @@ void Plugin::Update(float dt)
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Space))
 	{
-		m_CanRun = true;
+		m_Run = true;
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Left))
 	{
@@ -174,7 +175,7 @@ void Plugin::Update(float dt)
 	}
 	else if (m_pInterface->Input_IsKeyboardKeyUp(Elite::eScancode_Space))
 	{
-		m_CanRun = false;
+		m_Run = false;
 	}
 }
 
@@ -188,30 +189,40 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 	m_HousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	m_EntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-	for (auto& e : m_EntitiesInFOV)
-	{
-		if (e.Type == eEntityType::PURGEZONE)
-		{
-			PurgeZoneInfo zoneInfo;
-			m_pInterfaceWrapper->PurgeZone_GetInfo(e, zoneInfo);
-			std::cout << "Purge Zone in FOV:" << e.Location.x << ", " << e.Location.y << " ---EntityHash: " << e.EntityHash << "---Radius: " << zoneInfo.Radius << std::endl;
-		}
-	}
 
 	// Handle steeirng
 	m_pAgentsteering->CalculateSteering(dt, agentInfo);
 	steering = m_pAgentsteering->GetAgentSteering();
 
+	// Handle Timers
 	m_TimeNow = std::chrono::system_clock::now();
 	if (!agentInfo.Bitten)
 	{
 		float elapsedBiteTime = float(std::chrono::duration_cast<std::chrono::seconds>(m_TimeNow - m_lastBitten).count());
-		m_CanRun = (elapsedBiteTime < 1.5f);
+		// Run if you have enough stamina, or you are bitten
+		if (agentInfo.Stamina < 8.f)
+			m_CanRun = false;
+		else if (agentInfo.Stamina == 10.f)
+			m_CanRun = true;
+		m_Run = ((elapsedBiteTime < 1.5f)||(m_CanRun));
+		std::cout << agentInfo.Stamina << endl;
+		std::cout << m_CanRun << endl;
 		m_AgentRage = (elapsedBiteTime < 2.f);
 	}
 	else
 		m_lastBitten = std::chrono::system_clock::now();
-	// check if agent is out of bounds
+	
+	bool inPurgeZone = false;
+	m_pBlackboard->GetData("InPurgeZone", inPurgeZone);
+	if (!inPurgeZone)
+	{
+		float elapsedFleeTime = float(std::chrono::duration_cast<std::chrono::seconds>(m_TimeNow - m_LastInsidePurge).count());
+		m_FleePurge = (elapsedFleeTime < 4.f);
+	}
+	else
+		m_LastInsidePurge = std::chrono::system_clock::now();
+
+	// check if agent is out of bounds + timer
 	if (DistanceSquared(m_pInterfaceWrapper->Agent_GetInfo().Position, m_pInterfaceWrapper->World_GetInfo().Center) > 
 		Square(m_pInterfaceWrapper->World_GetInfo().Dimensions.x - 75) || m_Returning)
 	{
@@ -223,12 +234,8 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	m_pInterfaceWrapper->Draw_Circle(m_pInterfaceWrapper->World_GetInfo().Center,
 		m_pInterfaceWrapper->World_GetInfo().Dimensions.x -75, { 1,0,0 });
-
-	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
-
-								 //SteeringPlugin_Output is works the exact same way a SteeringBehaviour output
-
-								 //@End (Demo Purposes)
+	// Let agent run when nececarry
+	steering.RunMode = m_Run;
 	m_GrabItem = false; //Reset State
 	m_UseItem = false;
 	m_RemoveItem = false;
@@ -288,20 +295,19 @@ Blackboard* Plugin::CreateBlackboard(AgentSteering* pSteering)
 	pBlackboard->AddData("pInterface", m_pInterfaceWrapper);
 	pBlackboard->AddData("pEntitiesInFOV", &m_EntitiesInFOV);
 	pBlackboard->AddData("pHousesInFOV", &m_HousesInFOV);
-	//pBlackboard->AddData("pTargetEntity", static_cast<EntityInfo*>(nullptr));
 	pBlackboard->AddData("TargetPos", Elite::Vector2{});
 	pBlackboard->AddData("ExitPos", Elite::Vector2{});
 	pBlackboard->AddData("AvoidVec", std::vector<EntityInfo>{});
 	pBlackboard->AddData("HouseInfo", HouseInfo{});
 	pBlackboard->AddData("pAgentRage", &m_AgentRage);
-	pBlackboard->AddData("pTimeNow",	&m_TimeNow);
-	pBlackboard->AddData("WanderAngle", 3.f);
-	pBlackboard->AddData("Running", false);
+	pBlackboard->AddData("WanderAngle", 1.7f);
+	pBlackboard->AddData("InPurgeZone", false);
 	pBlackboard->AddData("NeedItem", false);
 	pBlackboard->AddData("ItemNeededPos", Elite::Vector2{});
 	pBlackboard->AddData("ItemNeededType", eItemType{});
 	pBlackboard->AddData("SearchBuilding", false);
 	pBlackboard->AddData("pReturning", &m_Returning);
+	pBlackboard->AddData("pFleePurge", &m_FleePurge);
 	pBlackboard->AddData("HouseCenterReached", false);
 	//pBlackboard->AddData("DebugRender", false);
 

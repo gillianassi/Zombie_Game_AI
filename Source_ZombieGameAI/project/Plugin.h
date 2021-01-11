@@ -28,14 +28,18 @@ private:
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;
 	ExamInterfaceWrapper* m_pInterfaceWrapper = nullptr;
+	Blackboard* m_pBlackboard = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
 	Elite::Blackboard* CreateBlackboard(AgentSteering* steering);
 
 
+
 	Elite::Vector2 m_Target = {};
+	bool m_Run = false; 
 	bool m_CanRun = false; 
 	bool m_Returning = false; 
+	bool m_FleePurge = false; 
 	bool m_AgentRage = false; 
 	bool m_GrabItem = false; //Demo purpose
 	bool m_UseItem = false; //Demo purpose
@@ -50,6 +54,8 @@ private:
 	std::vector<HouseInfo> m_HousesInFOV{};
 	std::chrono::system_clock::time_point m_lastBitten = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point m_LastOutOfBounds = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point m_LastInsidePurge = std::chrono::system_clock::now();
+	std::chrono::system_clock::time_point m_LastRun = std::chrono::system_clock::now();
 	std::chrono::system_clock::time_point m_TimeNow = std::chrono::system_clock::now();
 
 };

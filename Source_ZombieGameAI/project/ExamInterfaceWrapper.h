@@ -90,23 +90,26 @@ public:
 		};
 	};
 
-	virtual bool Agent_HasGun() { return (m_pistols>0); };
-	virtual bool Agent_HasMedKit() { return  (m_medKits > 0); };
-	virtual bool Agent_HasFood() { return  (m_food > 0); };
+	virtual bool Agent_HasGun() { return (m_pistols > 0); }
+	virtual bool Agent_HasMedKit() { return  (m_medKits > 0); }
+	virtual bool Agent_HasFood() { return  (m_food > 0); }
 
 	virtual void Quick_AddItem(EntityInfo i);
-	virtual void UpdateHouseMemory(Elite::Vector2 pos);
-	virtual void AddItemToMemory(ItemInfo item);
-	virtual Elite::Vector2 FindClosestItemInMemory(eItemType type);
-	virtual bool IsItemInMemory(eItemType type);
-	virtual void DeleteItemInMemory(ItemInfo item);
-	virtual bool SearchedHouseBefore(Elite::Vector2 pos);
 	virtual int GetItemStats(eItemType type);
 	virtual bool ExcessSlots();
 	virtual int SearchSlotWithItem(eItemType type);
 	virtual int SearchEmptyItemSlot();
 	virtual bool CanGrab(ItemInfo i);
 	virtual bool UseItem(eItemType type);
+
+	virtual void AddItemToMemory(ItemInfo item);
+	virtual Elite::Vector2 FindClosestItemInMemory(eItemType type);
+	virtual bool IsItemInMemory(eItemType type);
+	virtual void DeleteItemFromMemory(ItemInfo item);
+	virtual bool SearchedHouseBefore(Elite::Vector2 pos);
+	virtual void UpdateHouseMemory(Elite::Vector2 pos);
+
+
 
 protected:
 	IExamInterface* m_pInterface = nullptr;

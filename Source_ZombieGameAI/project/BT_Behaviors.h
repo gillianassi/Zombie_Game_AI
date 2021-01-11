@@ -56,14 +56,19 @@ bool PurgeZoneInSight(Elite::Blackboard* pBlackboard)
 	//Get data from blackboard
 	ExamInterfaceWrapper* pInterface = nullptr;
 	vector<EntityInfo>* pEntitiesInFOV = nullptr;
+	bool* pFleePurge = nullptr;
 	auto dataAvailable = pBlackboard->GetData("pInterface", pInterface) &&
-		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV);
-	if ((!pInterface)||(!pEntitiesInFOV))
+		pBlackboard->GetData("pEntitiesInFOV", pEntitiesInFOV) &&
+		pBlackboard->GetData("pFleePurge", pFleePurge);
+	if ((!pInterface)||(!pEntitiesInFOV)||(!pFleePurge))
 		return false;
 	
 	// Check for enemies in FOV
 	if (pEntitiesInFOV->size() == 0)
 		return false;
+	// keep fleeing until timer is down
+	if (*pFleePurge == true)
+		return true;
 
 	for (auto& entity : *pEntitiesInFOV)
 	{
@@ -75,9 +80,11 @@ bool PurgeZoneInSight(Elite::Blackboard* pBlackboard)
 			Elite::Vector2 targetPos = dir.GetNormalized()*(purgeZoneInfo.Radius+5) + pInterface->Agent_GetInfo().Position;
 			pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(targetPos), 3.f, { 1,0,0 });
 			pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(targetPos));
+			pBlackboard->ChangeData("InPurgeZone", true);
 			return true;
 		}
 	}
+	pBlackboard->ChangeData("InPurgeZone", false);
 	return false;
 }
 
@@ -119,10 +126,10 @@ bool ItemInSight(Elite::Blackboard* pBlackboard)
 					if ((itemNeededPos == item.Location) && (itemNeededType == item.Type))
 					{
 						pBlackboard->ChangeData("NeedItem", false);
-						pInterface->DeleteItemInMemory(item);
+						pInterface->DeleteItemFromMemory(item);
 					}
-					cout << "Grabbed Item" << endl;
 					pInterface->Quick_AddItem(entity);
+					std::cout << "Grabbed Item" << endl;
 				}
 				else
 				{
@@ -186,7 +193,6 @@ bool HouseInSight(Elite::Blackboard* pBlackboard)
 
 	pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(house.Center));
 	pBlackboard->ChangeData("HouseInfo", house);
-	cout << "Seek House center" << endl;
 
 	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(house.Center), 3.f, { 0,0,1 });
 	pInterface->Draw_Point(pInterface->NavMesh_GetClosestPathPoint(exit), 3.f, { 0,1,0 });
@@ -288,10 +294,20 @@ bool RememberNececity(Elite::Blackboard* pBlackboard)
 			pBlackboard->ChangeData("ItemNeededPos", itemPos);
 			pBlackboard->ChangeData("ItemNeededType", itemPos);
 			pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(itemPos));
-			return true;
+	
 		}
 	}
-	return false;
+	else
+	{
+		Elite::Vector2 itemNeededPos{};
+		auto dataAvailable = pBlackboard->GetData("ItemNeededPos", itemNeededPos);
+		//safety
+		if (pInterface->Agent_GetInfo().Position.DistanceSquared(itemNeededPos) < Square(pInterface->Agent_GetInfo().GrabRange))
+			pBlackboard->ChangeData("NeedItem", false);
+		pBlackboard->ChangeData("TargetPos", pInterface->NavMesh_GetClosestPathPoint(itemNeededPos));
+	}
+	return needItem;
+
 
 }
 
@@ -342,7 +358,7 @@ bool OutOfBounds(Elite::Blackboard* pBlackboard)
 	
 	if (!*pReturning)
 		return false;
-	cout << "Returning" << endl;
+	std::cout << "Returning" << endl;
 	pBlackboard->ChangeData("TargetPos", pInterface->World_GetInfo().Center);
 	return true;
 }
@@ -424,7 +440,7 @@ BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	pInterface->Draw_Point(wanderPoint, 3.f, { 1,0,0 });
 	
 	pSteering->SetToSeek(pInterface->NavMesh_GetClosestPathPoint(wanderPoint));
-	cout << "Wander" << endl;
+	std::cout << "Wander" << endl;
 	return Success;
 }
 
@@ -438,7 +454,7 @@ BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 	if (!pSteering)
 		return Failure;
 
-	cout << "Seek" << endl;
+	std::cout << "Seek" << endl;
 	pSteering->SetToSeek(TargetPos);
 
 	return Success;
@@ -470,7 +486,7 @@ BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 		return Failure;
 
 	pSteering->SetToFlee(TargetPos);
-	cout << "Flee" << endl;
+	std::cout << "Flee" << endl;
 	return Success;
 }
 
@@ -508,7 +524,7 @@ BehaviorState ChangeToAvoid(Elite::Blackboard* pBlackboard)
 	Elite::Vector2 target =pInterface->NavMesh_GetClosestPathPoint(linearVel*8.f + agentInfo.Position);
 	pInterface->Draw_Point(target, 3.f, { 1,0,0 });
 	pSteering->SetToSeek(target);
-	cout << "Avoid" << endl;
+	std::cout << "Avoid" << endl;
 	return Success;
 }
 BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
@@ -525,7 +541,7 @@ BehaviorState ChangeToFace(Elite::Blackboard* pBlackboard)
 
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
 	pSteering->SetToFace(targetPos);
-	cout << "Face" << endl;
+	std::cout << "Face" << endl;
 	return Success;
 }
 
@@ -544,7 +560,7 @@ BehaviorState ChangeToShoot(Elite::Blackboard* pBlackboard)
 	//pInterface->Draw_Point(closestEnemy.Location, 20.f, { 1,0,0 });
 	pInterface->UseItem(eItemType::PISTOL);
 	pSteering->SetToFace(targetPos);
-	cout << "Shoot" << endl;
+	std::cout << "Shoot" << endl;
 	return Success;
 }
 
@@ -559,7 +575,7 @@ BehaviorState ChangeToRotate(Elite::Blackboard* pBlackboard)
 		return Failure;
 
 	pSteering->SetToRotate();
-	cout << "Rotate" << endl;
+	std::cout << "Rotate" << endl;
 	return Success;
 }
 BehaviorState ChangeToHeal(Elite::Blackboard* pBlackboard)
@@ -572,7 +588,7 @@ BehaviorState ChangeToHeal(Elite::Blackboard* pBlackboard)
 
 	if (!pInterface->UseItem(eItemType::MEDKIT))
 		return Failure;
-
+	std::cout << "Heal" << endl;
 	return Success;
 }
 BehaviorState ChangeToEat(Elite::Blackboard* pBlackboard)
@@ -585,7 +601,7 @@ BehaviorState ChangeToEat(Elite::Blackboard* pBlackboard)
 
 	if (!pInterface->UseItem(eItemType::FOOD))
 		return Failure;
-
+	std::cout << "Eat" << endl;
 	return Success;
 }
 #endif
